@@ -1,0 +1,24 @@
+{
+  "name": "pawie-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pawie monorepo - Mobile app and Admin web",
+  "scripts": {
+    "dev": "pnpm --filter mobile dev",
+    "dev:admin": "pnpm --filter admin dev",
+    "dev:mobile": "pnpm --filter mobile start",
+    "build": "pnpm --filter mobile build && pnpm --filter admin build",
+    "build:admin": "pnpm --filter admin build",
+    "build:mobile": "pnpm --filter mobile build",
+    "lint": "pnpm --filter mobile lint && pnpm --filter admin lint",
+    "type-check": "pnpm --filter mobile type-check && pnpm --filter admin type-check",
+    "supabase": "supabase"
+  },
+  "devDependencies": {
+    "supabase": "^1.226.4"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
