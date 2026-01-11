@@ -66,7 +66,7 @@ Pawie-Expo/
 ### 3. Supabase Project Connection
 
 - [x] Supabase project created manually (user confirmed)
-- [ ] Login to Supabase CLI
+- [x] Login to Supabase CLI
   ```bash
   # From root directory
   npx supabase login
@@ -187,7 +187,7 @@ Pawie-Expo/
   ```
   - [x] Verify app starts without errors ✅
   - [x] Test Supabase connection screen created ✅ (`/test-supabase`)
-  - [ ] **Manual test**: Navigate to `/test-supabase` route in the app to verify connection
+  - [x] **Manual test**: Navigate to `/test-supabase` route in the app to verify connection
 
 ---
 
@@ -333,4 +333,5 @@ Phase 0 is complete when:
 - ✅ Both apps can start and connect to Supabase
 - ✅ Dependencies are installed
 - ✅ Git is properly configured
+
 

@@ -1,7 +1,7 @@
 # Doc 05 — Admin App Specification
 
 Product: Pawie  
-Version: v1.0  
+Version: v1.1 (Product Families + Variant Dimensions)  
 Last Updated: 2026-01-03  
 Status: Source of Truth
 
@@ -79,49 +79,107 @@ Requirements:
 
 ---
 
-## 6. Products Module
+## 6. Product Families Module
 
 Purpose:
-- Manage product catalog
+- Manage product families (groups of related products with shared variant dimensions)
+
+Capabilities:
+- Create product family
+- Edit family name and description
+- Define variant dimensions for family (e.g., "Flavor", "Size")
+- Define variant values for each dimension (e.g., "Lamb", "Chicken" for Flavor)
+- View all products in a family
+- Delete family (with cascade handling)
+
+Family fields editable:
+- Name
+- Description
+
+Variant Dimension management:
+- Add dimension (name, sort_order)
+- Edit dimension name and sort order
+- Delete dimension (cascade to values and product assignments)
+
+Variant Value management:
+- Add value to dimension (value text, sort_order)
+- Edit value text and sort order
+- Delete value (cascade to product assignments)
+
+Restrictions:
+- Dimensions and values cannot be deleted if products are assigned
+- Family deletion requires confirmation and handles product reassignment
+
+---
+
+## 7. Products Module
+
+Purpose:
+- Manage individual products (each represents a specific variant combination)
 
 Capabilities:
 - Create product
+- Assign product to family (optional)
+- Assign variant values to product (one per dimension in family)
 - Edit product
 - Publish / unpublish product
-- Assign category
+- Assign tags (multi-category)
 - Toggle autoship eligibility
 
 Product fields editable:
 - Name
 - Description
-- Category
+- Category (legacy, consider using tags instead)
+- Family assignment
+- Variant value assignments (for products in families)
+- Base Price (IDR) - stored directly on product
+- SKU - stored directly on product
+- Tag assignments (many-to-many)
 - Published status
 - Autoship eligible flag
 
+Variant Value Assignment:
+- For products in a family, must assign exactly one value per dimension
+- UI shows dimension selectors with available values
+- Validation ensures all dimensions are assigned
+
+Tag Assignment:
+- Multi-select interface for tags
+- Can assign multiple tags per product
+- Tags can be created on-the-fly or selected from existing
+
 Restrictions:
 - Deleting products should be soft-delete or disabled once ordered
+- Products in families must have variant values assigned for all dimensions
+- Cannot remove variant value assignment if it's the only one for that dimension
+- Products in families must have price and SKU set
+- Price and SKU are required for family-based products
 
 ---
 
-## 7. Product Variants Module
+## 8. Product Tags Module
 
 Purpose:
-- Manage variant-level pricing and SKUs
+- Manage product tags for multi-category support
 
 Capabilities:
-- Create variant
-- Edit variant
-- Set base price (IDR)
-- Manage SKU
-- View inventory status
+- Create tag (name, slug)
+- Edit tag
+- Delete tag (with cascade handling)
+- View all products with a tag
+- Bulk assign tags to products
 
-Rules:
-- Base price is edited only here
-- Admin must never edit final or discounted prices directly
+Tag fields editable:
+- Name
+- Slug (auto-generated from name, editable)
+
+Restrictions:
+- Tag deletion removes assignments but doesn't delete products
+- Slug must be unique
 
 ---
 
-## 8. Pricing & Discounts Module
+## 9. Pricing & Discounts Module
 
 Purpose:
 - Manage all discount logic including autoship cheaper pricing
@@ -132,7 +190,6 @@ Capabilities:
 - Define discount type (percent or fixed)
 - Define discount scope:
   - Product
-  - Variant
   - Category
 - Define discount time window
 - Define stacking rules
@@ -140,7 +197,7 @@ Capabilities:
 
 Admin visibility:
 - View discount usage
-- Preview effective prices per variant
+- Preview effective prices per product
 - Preview autoship vs one-time pricing
 
 Restrictions:
@@ -149,13 +206,13 @@ Restrictions:
 
 ---
 
-## 9. Inventory Module
+## 10. Inventory Module
 
 Purpose:
 - Maintain accurate stock levels and audit history
 
 Capabilities:
-- View inventory per variant
+- View inventory per product
 - Manually adjust inventory
 - View inventory movement history
 - See autoship-related demand indicators
@@ -170,7 +227,7 @@ Rules:
 
 ---
 
-## 10. Orders Module
+## 11. Orders Module
 
 Purpose:
 - Process and monitor customer orders
@@ -195,7 +252,7 @@ Restrictions:
 
 ---
 
-## 11. Autoships Module
+## 12. Autoships Module
 
 Purpose:
 - Monitor recurring orders and future demand
@@ -204,7 +261,7 @@ Capabilities:
 - View all autoships
 - Filter by status (active, paused, cancelled)
 - View next run date
-- View linked pet and product
+- View linked pet and product (product_id, not variant_id)
 - View autoship execution history
 
 Admin actions:
@@ -217,7 +274,7 @@ Restrictions:
 
 ---
 
-## 12. Customers Module
+## 13. Customers Module
 
 Purpose:
 - Customer support and visibility
@@ -234,7 +291,7 @@ Restrictions:
 
 ---
 
-## 13. Settings Module (Minimal)
+## 14. Settings Module (Minimal)
 
 Purpose:
 - System-level configuration
@@ -246,7 +303,7 @@ Capabilities (MVP):
 
 ---
 
-## 14. Non-Functional Requirements
+## 16. Non-Functional Requirements
 
 Security:
 - RLS enforced on all reads and writes
@@ -265,12 +322,15 @@ Usability:
 
 ---
 
-## 15. MVP Definition of Done
+## 17. MVP Definition of Done
 
 Admin App MVP is complete when:
-- Admin can manage products and variants
+- Admin can manage product families with variant dimensions
+- Admin can manage products and assign variant values
+- Admin can set price and SKU directly on products
+- Admin can manage product tags (multi-category)
 - Admin can manage discounts including autoship cheaper
-- Admin can manage inventory safely
+- Admin can manage inventory safely (per product)
 - Admin can view and process orders
 - Admin can monitor autoships
 - No admin action can corrupt pricing or inventory

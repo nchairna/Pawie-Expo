@@ -1,0 +1,240 @@
+# .cursorrules — Pawie (Prod-Ready, Safe, Monorepo)
+
+Purpose:
+- Keep Cursor outputs consistent, secure, and production-ready
+- Prevent dangerous shortcuts (service role in client, bypassing RLS, leaking secrets)
+- Enforce architecture decisions (Expo mobile + Next.js admin + Supabase)
+- Work well with MCP tools (Context7, Supabase, File System)
+
+Project:
+- Monorepo
+  - apps/mobile (Expo)
+  - apps/admin (Next.js)
+  - supabase/migrations
+  - docs
+
+---
+
+## 0) Golden Rules (Never Break)
+
+1) Never put Supabase service_role key in:
+- apps/mobile
+- apps/admin
+- any client-side code
+- any repo file committed to git
+
+2) All data access must respect RLS:
+- If a feature needs privileged writes (orders, pricing, etc.), it must be done server-side later
+- Do not “fix” permission issues by weakening RLS policies
+
+3) No secrets in code or docs:
+- No real keys in markdown
+- No copying env values into examples
+- Use placeholders like YOUR_SUPABASE_URL
+
+4) Prefer smallest safe change:
+- Don’t refactor unrelated files
+- Don’t introduce new libs unless justified
+- Keep changes scoped to the request
+
+5) Produce copy-paste-safe markdown docs:
+- No broken indentation
+- No nested mindmaps
+- No huge code blocks inside docs unless explicitly requested
+
+---
+
+## 1) Repository Conventions
+
+1.1 Paths
+- Mobile app lives in apps/mobile
+- Admin app lives in apps/admin
+- SQL migrations live in supabase/migrations
+- Implementation docs live in docs/implementation
+
+1.2 Package manager
+- Use pnpm workspace scripts
+- Do not introduce npm/yarn commands unless necessary
+
+1.3 Imports
+- Admin uses path alias @/* (if configured)
+- Keep import paths consistent and short
+
+---
+
+## 2) Supabase Rules
+
+2.1 Keys & Environments
+- apps/mobile uses:
+  - EXPO_PUBLIC_SUPABASE_URL
+  - EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+- apps/admin uses:
+  - NEXT_PUBLIC_SUPABASE_URL
+  - NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+Never use service role in either app.
+
+2.2 Data access patterns
+- Mobile:
+  - Read-only for catalog
+  - CRUD only for user-owned tables (pets, addresses, autoships)
+  - Orders are read-only until Phase 3 server-side creation exists
+
+- Admin:
+  - Uses same anon key
+  - Admin capability is determined by profiles.role via RLS
+  - Must enforce UX guard:
+    - if not logged in -> redirect login
+    - if logged in but not admin -> access denied
+
+2.3 Migrations
+- Every schema or RLS change must be a SQL migration file
+- Never edit tables manually in the dashboard without also updating migrations
+- Keep migrations small and named clearly:
+  - 0005_product_images_schema.sql
+  - 0006_product_images_rls.sql
+
+2.4 Storage
+- Bucket: product-images
+- DB stores storage path only, not full URLs
+- Public read policy exists
+- Admin-only write policies exist
+- Any image upload flow must:
+  - upload file
+  - insert product_images row
+  - update products.primary_image_path when primary changes
+
+---
+
+## 3) Security Rules (Production)
+
+3.1 RLS
+- Never weaken RLS to make development easier
+- If access fails, fix client queries or roles, not policies
+- Admin-only tables remain admin-only:
+  - inventory
+  - inventory_movements
+  - discounts
+  - discount_targets
+  - products write
+  - variants write
+
+3.2 Auth
+- Use Supabase email/password for now
+- No custom password storage in public tables
+- profiles row must exist (trigger already created in Phase 1)
+
+3.3 Validation
+- Validate any user-provided input (forms)
+- On admin: validate product/variant fields before insert/update
+- On mobile: validate pet form inputs
+
+3.4 Logging
+- Do not log session tokens, JWTs, or secret env values
+- Errors can be logged without sensitive payloads
+
+---
+
+## 4) UI/UX Rules
+
+4.1 Admin UI (shadcn/ui)
+- Admin must use shadcn/ui components for consistency
+- Use clean black/white minimal UI
+
+4.2 Mobile UI (Expo)
+- Bottom tabs: Shop, Orders, Pets, Account
+- Shop is accessible without login
+- Orders/Pets require login
+- Account shows login/register when signed out
+
+4.3 Empty, Loading, Error states
+- Every screen must have:
+  - loading state
+  - empty state
+  - error state with retry
+
+---
+
+## 5) Code Quality Rules
+
+5.1 TypeScript strictness
+- Do not use any
+- Prefer explicit types
+- Use Zod for runtime validation if needed (optional)
+
+5.2 Separation of concerns
+- Supabase client in a single file per app:
+  - apps/admin/lib/supabase.ts
+  - apps/mobile/lib/supabase.ts
+- Data access helpers in:
+  - apps/admin/lib/data/*
+  - apps/mobile/lib/data/*
+
+5.3 No duplicated logic
+- If the same logic is needed in both apps, put it in packages/ (later)
+- For now keep it simple and local per app
+
+5.4 Avoid heavy dependencies
+- Prefer built-in tools and Supabase features first
+- Add search engines later only if Postgres search is too slow
+
+---
+
+## 6) MCP Usage Rules (Context7, Supabase MCP, File System)
+
+6.1 Context7
+- Use Context7 to confirm best-practice usage of libraries before adding new patterns
+- Always follow primary docs when possible
+
+6.2 Supabase MCP
+- Use it to:
+  - inspect schema
+  - verify RLS policies
+  - check migrations impact
+  - confirm queries align with RLS
+
+6.3 File System MCP
+- Use it to:
+  - locate existing files before creating duplicates
+  - update the correct doc file in docs/implementation
+  - keep repo structure consistent
+
+---
+
+## 7) Output Formatting Rules (Critical for Nicholas)
+
+When generating docs:
+- Provide plain markdown only
+- No nested mindmaps
+- No mixed formatting that breaks copy-paste
+- Avoid large embedded code blocks unless explicitly requested
+- Prefer checklists and short sections
+
+When generating code:
+- Only output the changed/new files
+- Each file must include its path header
+- Keep code minimal and production-safe
+- Never include secrets
+
+---
+
+## 8) “Stop and Ask” Conditions
+
+Cursor must STOP and ask before proceeding if:
+- A change would weaken RLS
+- A request suggests using service_role in client
+- A change would store secrets in code
+- A feature needs server-side privileged actions but no backend exists yet
+
+---
+
+## 9) Definition of Done (Before Phase 3)
+
+Phase 2 must be complete with:
+- Auth flows implemented (admin + mobile)
+- Catalog read path works (published products)
+- Admin can manage products/variants/images with shadcn/ui
+- Search baseline + pagination exist
+- RLS verified and not weakened
+- All docs updated in docs/implementation
