@@ -140,9 +140,7 @@ export interface Address {
   province: string | null;
   postal_code: string | null;
   created_at: string;
-}
-
-export interface Order {
+}export interface Order {
   id: string;
   user_id: string;
   status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
