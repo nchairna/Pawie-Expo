@@ -7,9 +7,11 @@ import {
   ActivityIndicator,
   FlatList,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { DimensionValueButton } from '@/components/product/dimension-value-button';
@@ -25,6 +27,7 @@ import {
 } from '@/lib/product-variant-values';
 import { computeProductPrice } from '@/lib/pricing';
 import { formatPriceIDR } from '@/lib/utils';
+import { useCart } from '@/contexts/CartContext';
 import type { ProductWithDetails, VariantValue, Product, PriceQuote } from '@/lib/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -33,6 +36,7 @@ type LoadingState = 'loading' | 'success' | 'error';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { addItem, itemCount } = useCart();
   const [product, setProduct] = useState<ProductWithDetails | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -622,6 +626,20 @@ export default function ProductDetailScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ThemedText style={styles.backButtonText}>← Back</ThemedText>
         </TouchableOpacity>
+        <View style={styles.headerSpacer} />
+        <TouchableOpacity
+          style={styles.cartButton}
+          onPress={() => router.push('/(tabs)/cart')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <MaterialIcons name="shopping-cart" size={24} color="#000" />
+          {itemCount > 0 && (
+            <View style={styles.cartBadge}>
+              <ThemedText style={styles.cartBadgeText}>
+                {itemCount > 99 ? '99+' : itemCount}
+              </ThemedText>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
@@ -1012,6 +1030,31 @@ export default function ProductDetailScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Add to Cart Button (Fixed at bottom) */}
+      {product && product.published && (
+        <View style={styles.addToCartContainer}>
+          <TouchableOpacity
+            style={styles.addToCartButton}
+            onPress={async () => {
+              try {
+                await addItem(product.id, 1);
+                Alert.alert('Added to Cart', `${product.name} has been added to your cart`, [
+                  { text: 'Continue Shopping', style: 'cancel' },
+                  {
+                    text: 'View Cart',
+                    onPress: () => router.replace('/(tabs)/cart'),
+                  },
+                ]);
+              } catch (error: any) {
+                Alert.alert('Error', error.message || 'Failed to add item to cart');
+              }
+            }}>
+            <MaterialIcons name="shopping-cart" size={20} color="#fff" />
+            <ThemedText style={styles.addToCartButtonText}>Add to Cart</ThemedText>
+          </TouchableOpacity>
+        </View>
+      )}
     </ThemedView>
   );
 }
@@ -1021,14 +1064,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 50,
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
+  headerSpacer: {
+    flex: 1,
+  },
   backButton: {
     paddingVertical: 8,
+  },
+  cartButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#ff4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   backButtonText: {
     fontSize: 16,
@@ -1081,7 +1151,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 16,
+    paddingBottom: 100, // Space for fixed Add to Cart button
   },
   productName: {
     fontSize: 28,
@@ -1345,6 +1415,35 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     padding: 16,
+  },
+  addToCartContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  addToCartButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 12,
+  },
+  addToCartButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

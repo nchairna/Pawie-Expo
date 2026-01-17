@@ -92,3 +92,54 @@ export interface PriceQuote {
   }[];
   line_total_idr: number;
 }
+
+// Phase 4: Order & Address Types
+export interface Address {
+  id: string;
+  user_id: string;
+  label: string | null;
+  address_line: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+  created_at: string;
+}
+
+export interface AddressInput {
+  label: string;
+  address_line: string;
+  city: string;
+  province: string;
+  postal_code: string;
+}
+
+export interface Order {
+  id: string;
+  status: string;
+  source: string;
+  subtotal_idr: number;
+  discount_total_idr: number;
+  total_idr: number;
+  created_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  unit_base_price_idr: number;
+  unit_final_price_idr: number;
+  discount_total_idr: number;
+  product?: Product;
+}
+
+export interface OrderWithItems extends Order {
+  items: OrderItem[];
+  address?: Address;
+}
+
+export interface OrderResult {
+  success: boolean;
+  order_id?: string;
+  error?: string;
+}

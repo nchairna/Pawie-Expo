@@ -19,6 +19,8 @@ import { getImageUrl } from '@/lib/images';
 import { getAllTags, filterProductsByTags } from '@/lib/tags';
 import { computeProductPrice } from '@/lib/pricing';
 import { formatPriceIDR } from '@/lib/utils';
+import { useCart } from '@/contexts/CartContext';
+import { CartHeaderButton } from '@/components/cart-header-button';
 import type { Product, ProductTag, PriceQuote } from '@/lib/types';
 
 type LoadingState = 'idle' | 'loading' | 'success' | 'error';
@@ -26,6 +28,7 @@ type LoadingState = 'idle' | 'loading' | 'success' | 'error';
 const PRODUCTS_PER_PAGE = 20;
 
 export default function ShopScreen() {
+  const { itemCount } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -424,6 +427,13 @@ export default function ShopScreen() {
   // Success state with products
   return (
     <ThemedView style={styles.container}>
+      {/* Header with Cart Icon */}
+      <View style={styles.header}>
+        <View style={styles.headerSpacer} />
+        <ThemedText type="title" style={styles.headerTitle}>Shop</ThemedText>
+        <CartHeaderButton />
+      </View>
+
       {/* Search Input */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
@@ -556,6 +566,43 @@ export default function ShopScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  cartButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#ff4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   centerContent: {
     flex: 1,
