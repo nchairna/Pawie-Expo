@@ -200,6 +200,67 @@ export interface InventoryMovement {
   created_at: string;
 }
 
-export interface InventoryWithProduct extends Inventory {
+export interface InventoryWithProduct {
+  id?: string | null;  // May be null if no inventory record exists
+  product_id: string;
+  stock_quantity: number;  // 0 if no inventory record
+  updated_at?: string;
   product: Product;
+}
+
+// Phase 5: Autoship Types
+
+export interface Pet {
+  id: string;
+  user_id: string;
+  name: string;
+  species: string | null;
+  breed: string | null;
+  age: number | null;
+  weight: number | null;
+  activity_level: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Autoship {
+  id: string;
+  user_id: string;
+  pet_id: string | null;
+  product_id: string;
+  quantity: number;
+  frequency_weeks: number;
+  next_run_at: string;
+  status: 'active' | 'paused' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  user?: Profile;
+  product?: Product;
+  pet?: Pet;
+}
+
+export interface AutoshipRun {
+  id: string;
+  autoship_id: string;
+  scheduled_at: string;
+  executed_at: string | null;
+  status: 'pending' | 'completed' | 'failed' | 'skipped';
+  order_id: string | null;
+  error_message: string | null;
+  created_at: string;
+  // Joined data
+  order?: Order;
+}
+
+export interface AutoshipWithRuns extends Autoship {
+  runs: AutoshipRun[];
+}
+
+export interface AutoshipStats {
+  totalActive: number;
+  totalPaused: number;
+  dueToday: number;
+  failedLastWeek: number;
 }

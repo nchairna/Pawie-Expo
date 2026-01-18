@@ -7,6 +7,7 @@ import type { Inventory, InventoryMovement, InventoryWithProduct, Product } from
 
 /**
  * Get all inventory with product info
+ * Returns ALL products, including those without inventory records
  */
 export async function getAllInventory(options?: {
   limit?: number;
@@ -15,47 +16,20 @@ export async function getAllInventory(options?: {
   outOfStock?: boolean;
   search?: string;
 }): Promise<InventoryWithProduct[]> {
-  let query = supabase
-    .from('inventory')
-    .select(`
-      *,
-      product:products (
-        id,
-        name,
-        primary_image_path,
-        sku,
-        published
-      )
-    `)
-    .order('updated_at', { ascending: false });
-
-  // Filter by stock status
-  if (options?.outOfStock) {
-    query = query.eq('stock_quantity', 0);
-  } else if (options?.lowStock) {
-    query = query.gt('stock_quantity', 0).lte('stock_quantity', 10);
-  }
-
-  // Note: Search filtering will be done client-side due to Supabase nested query limitations
-
-  if (options?.limit) {
-    query = query.limit(options.limit);
-  }
-
-  if (options?.offset) {
-    query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
-  }
-
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc('get_all_products_with_inventory', {
+    p_low_stock: options?.lowStock || false,
+    p_out_of_stock: options?.outOfStock || false,
+    p_search: options?.search || null,
+    p_limit: options?.limit || null,
+    p_offset: options?.offset || 0,
+  });
 
   if (error) {
     throw new Error(`Failed to fetch inventory: ${error.message}`);
   }
 
-  return (data || []).map((item: any) => ({
-    ...item,
-    product: item.product || undefined,
-  }));
+  // Parse JSONB result - data is already an array of InventoryWithProduct
+  return (data || []) as InventoryWithProduct[];
 }
 
 /**

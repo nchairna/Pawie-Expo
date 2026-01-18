@@ -1,6 +1,6 @@
 /**
- * Order History Screen
- * Phase 4: Orders & Checkout
+ * Orders Screen with Tabs (Order History & Autoships)
+ * Phase 5: Autoship System
  */
 
 import { useState, useEffect } from 'react';
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -19,8 +20,11 @@ import { ThemedView } from '@/components/themed-view';
 import { CartHeaderButton } from '@/components/cart-header-button';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserOrders } from '@/lib/orders';
+import { getUserAutoships } from '@/lib/autoships';
 import { formatPriceIDR } from '@/lib/utils';
-import type { Order } from '@/lib/types';
+import type { Order, Autoship } from '@/lib/types';
+
+type Tab = 'orders' | 'autoships';
 
 const statusColors: Record<string, string> = {
   pending: '#ff9800',
@@ -30,6 +34,12 @@ const statusColors: Record<string, string> = {
   delivered: '#4CAF50',
   cancelled: '#9e9e9e',
   refunded: '#f44336',
+};
+
+const autoshipStatusColors: Record<string, string> = {
+  active: '#4CAF50',
+  paused: '#ff9800',
+  cancelled: '#9e9e9e',
 };
 
 function formatDate(dateString: string): string {
@@ -48,86 +58,99 @@ function formatDate(dateString: string): string {
   });
 }
 
+function formatDateTime(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('id-ID', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function truncateOrderId(orderId: string): string {
   return orderId.substring(0, 8).toUpperCase();
 }
 
+function formatFrequency(weeks: number): string {
+  if (weeks === 1) return 'Weekly';
+  if (weeks === 2) return 'Every 2 weeks';
+  return `Every ${weeks} weeks`;
+}
+
 export default function OrdersScreen() {
   const { user, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>('orders');
+
+  // Orders state
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersRefreshing, setOrdersRefreshing] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  // Autoships state
+  const [autoships, setAutoships] = useState<Autoship[]>([]);
+  const [autoshipsLoading, setAutoshipsLoading] = useState(true);
+  const [autoshipsRefreshing, setAutoshipsRefreshing] = useState(false);
+  const [autoshipsError, setAutoshipsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     } else if (user) {
-      loadOrders(true);
+      loadOrders();
+      loadAutoships();
     }
   }, [user, authLoading]);
 
-  const loadOrders = async (reset: boolean = false) => {
-    if (!reset && (loading || loadingMore)) return;
-
+  const loadOrders = async () => {
     try {
-      if (reset) {
-        setLoading(true);
-        setOffset(0);
-        setError(null);
-      } else {
-        setLoadingMore(true);
-      }
-
-      const currentOffset = reset ? 0 : offset;
-      const data = await getUserOrders({
-        limit: 20,
-        offset: currentOffset,
-      });
-
-      if (reset) {
-        setOrders(data);
-      } else {
-        setOrders((prev) => [...prev, ...data]);
-      }
-
-      setHasMore(data.length === 20);
-      setOffset(currentOffset + data.length);
-      setError(null);
+      setOrdersLoading(true);
+      setOrdersError(null);
+      const data = await getUserOrders({ limit: 50 });
+      setOrders(data);
     } catch (error: any) {
       console.error('Failed to load orders:', error);
-      const errorMessage = error?.message || 'Failed to load orders';
-      setError(errorMessage);
-      if (reset) {
-        setOrders([]);
-      }
+      setOrdersError(error?.message || 'Failed to load orders');
+      setOrders([]);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      setOrdersLoading(false);
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadOrders(true);
-    setRefreshing(false);
-  };
-
-  const handleLoadMore = () => {
-    if (hasMore && !loadingMore) {
-      loadOrders(false);
+  const loadAutoships = async () => {
+    try {
+      setAutoshipsLoading(true);
+      setAutoshipsError(null);
+      const data = await getUserAutoships();
+      setAutoships(data);
+    } catch (error: any) {
+      console.error('Failed to load autoships:', error);
+      setAutoshipsError(error?.message || 'Failed to load autoships');
+      setAutoships([]);
+    } finally {
+      setAutoshipsLoading(false);
     }
   };
 
-  if (authLoading || loading) {
+  const handleRefreshOrders = async () => {
+    setOrdersRefreshing(true);
+    await loadOrders();
+    setOrdersRefreshing(false);
+  };
+
+  const handleRefreshAutoships = async () => {
+    setAutoshipsRefreshing(true);
+    await loadAutoships();
+    setAutoshipsRefreshing(false);
+  };
+
+  if (authLoading) {
     return (
       <ThemedView style={styles.container}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" />
-          <ThemedText style={styles.loadingText}>Loading orders...</ThemedText>
+          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
         </View>
       </ThemedView>
     );
@@ -137,43 +160,103 @@ export default function OrdersScreen() {
     return null; // Will redirect
   }
 
-  // Error state
-  if (error && orders.length === 0) {
-    const isNetworkError =
-      error.toLowerCase().includes('network') ||
-      error.toLowerCase().includes('fetch') ||
-      error.toLowerCase().includes('connection');
-    const isRLSError =
-      error.toLowerCase().includes('permission') ||
-      error.toLowerCase().includes('access') ||
-      error.toLowerCase().includes('authenticated');
+  const renderOrderItem = ({ item }: { item: Order }) => (
+    <TouchableOpacity
+      style={styles.orderCard}
+      onPress={() => router.push(`/orders/${item.id}`)}>
+      <View style={styles.orderHeader}>
+        <View style={styles.orderIdContainer}>
+          <ThemedText style={styles.orderIdLabel}>Order</ThemedText>
+          <ThemedText type="defaultSemiBold" style={styles.orderId}>
+            {truncateOrderId(item.id)}
+          </ThemedText>
+        </View>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: statusColors[item.status] || '#999' },
+          ]}>
+          <ThemedText style={styles.statusText}>{item.status}</ThemedText>
+        </View>
+      </View>
+      <View style={styles.orderDetails}>
+        <View style={styles.orderInfo}>
+          <ThemedText style={styles.orderDate}>{formatDate(item.created_at)}</ThemedText>
+          <ThemedText style={styles.orderSource}>
+            {item.source === 'one_time' ? 'One-Time' : 'Autoship'}
+          </ThemedText>
+        </View>
+        <ThemedText type="defaultSemiBold" style={styles.orderTotal}>
+          {formatPriceIDR(item.total_idr)}
+        </ThemedText>
+      </View>
+      <View style={styles.orderFooter}>
+        <ThemedText style={styles.viewDetailsText}>View Details</ThemedText>
+        <MaterialIcons name="chevron-right" size={20} color="#999" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderAutoshipItem = ({ item }: { item: Autoship }) => {
+    const pricePerDelivery = item.product?.base_price_idr
+      ? item.product.base_price_idr * item.quantity
+      : 0;
 
     return (
-      <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerSpacer} />
-          <ThemedText type="title" style={styles.headerTitle}>Orders</ThemedText>
-          <CartHeaderButton />
+      <TouchableOpacity
+        style={styles.autoshipCard}
+        onPress={() => router.push(`/autoships/${item.id}`)}>
+        <View style={styles.autoshipHeader}>
+          {item.product?.primary_image_path && (
+            <View style={styles.productImageContainer}>
+              <Image
+                source={{ uri: item.product.primary_image_path }}
+                style={styles.productImage}
+              />
+            </View>
+          )}
+          <View style={styles.autoshipInfo}>
+            <ThemedText type="defaultSemiBold" style={styles.productName} numberOfLines={2}>
+              {item.product?.name}
+            </ThemedText>
+            <ThemedText style={styles.autoshipFrequency}>
+              {item.quantity} × {formatFrequency(item.frequency_weeks)}
+            </ThemedText>
+          </View>
         </View>
-        <View style={styles.centerContent}>
-          <MaterialIcons name="error-outline" size={64} color="#f44336" />
-          <ThemedText type="title" style={styles.errorTitle}>
-            {isNetworkError ? 'Connection Error' : isRLSError ? 'Authentication Error' : 'Error'}
-          </ThemedText>
-          <ThemedText style={styles.errorMessage}>
-            {isNetworkError
-              ? 'Unable to connect to the server. Please check your internet connection.'
-              : isRLSError
-              ? 'Please sign in to view your orders.'
-              : error || 'An unexpected error occurred'}
-          </ThemedText>
-          <TouchableOpacity style={styles.retryButton} onPress={() => loadOrders(true)}>
-            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-          </TouchableOpacity>
+        <View style={styles.autoshipDetails}>
+          <View>
+            {item.status === 'active' ? (
+              <>
+                <ThemedText style={styles.nextDeliveryLabel}>Next Delivery</ThemedText>
+                <ThemedText type="defaultSemiBold" style={styles.nextDeliveryDate}>
+                  {formatDateTime(item.next_run_at)}
+                </ThemedText>
+              </>
+            ) : (
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: autoshipStatusColors[item.status] || '#999' },
+                ]}>
+                <ThemedText style={styles.statusText}>{item.status}</ThemedText>
+              </View>
+            )}
+          </View>
+          <View style={styles.priceContainer}>
+            <ThemedText style={styles.pricePerDeliveryLabel}>Per Delivery</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.pricePerDelivery}>
+              {formatPriceIDR(pricePerDelivery)}
+            </ThemedText>
+          </View>
         </View>
-      </ThemedView>
+        <View style={styles.autoshipFooter}>
+          <ThemedText style={styles.viewDetailsText}>Manage Subscription</ThemedText>
+          <MaterialIcons name="chevron-right" size={20} color="#999" />
+        </View>
+      </TouchableOpacity>
     );
-  }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -183,77 +266,105 @@ export default function OrdersScreen() {
         <CartHeaderButton />
       </View>
 
-      {orders.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <MaterialIcons name="receipt-long" size={64} color="#999" />
-          <ThemedText type="title" style={styles.emptyTitle}>
-            No orders yet
+      {/* Tab Selector */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'orders' && styles.activeTab]}
+          onPress={() => setActiveTab('orders')}>
+          <ThemedText
+            style={[styles.tabText, activeTab === 'orders' && styles.activeTabText]}>
+            Order History
           </ThemedText>
-          <ThemedText style={styles.emptyMessage}>
-            Start shopping to see your orders here
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'autoships' && styles.activeTab]}
+          onPress={() => setActiveTab('autoships')}>
+          <ThemedText
+            style={[styles.tabText, activeTab === 'autoships' && styles.activeTabText]}>
+            Autoships
           </ThemedText>
-          <TouchableOpacity
-            style={styles.shopButton}
-            onPress={() => router.push('/(tabs)/shop')}>
-            <ThemedText style={styles.shopButtonText}>Start Shopping</ThemedText>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={orders}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.orderCard}
-              onPress={() => router.push(`/orders/${item.id}`)}>
-              <View style={styles.orderHeader}>
-                <View style={styles.orderIdContainer}>
-                  <ThemedText style={styles.orderIdLabel}>Order</ThemedText>
-                  <ThemedText type="defaultSemiBold" style={styles.orderId}>
-                    {truncateOrderId(item.id)}
-                  </ThemedText>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: statusColors[item.status] || '#999' },
-                  ]}>
-                  <ThemedText style={styles.statusText}>{item.status}</ThemedText>
-                </View>
-              </View>
-              <View style={styles.orderDetails}>
-                <View style={styles.orderInfo}>
-                  <ThemedText style={styles.orderDate}>{formatDate(item.created_at)}</ThemedText>
-                  <ThemedText style={styles.orderSource}>
-                    {item.source === 'one_time' ? 'One-Time' : 'Autoship'}
-                  </ThemedText>
-                </View>
-                <ThemedText type="defaultSemiBold" style={styles.orderTotal}>
-                  {formatPriceIDR(item.total_idr)}
-                </ThemedText>
-              </View>
-              <View style={styles.orderFooter}>
-                <ThemedText style={styles.viewDetailsText}>View Details</ThemedText>
-                <MaterialIcons name="chevron-right" size={20} color="#999" />
-              </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Content */}
+      {activeTab === 'orders' ? (
+        ordersLoading ? (
+          <View style={styles.centerContent}>
+            <ActivityIndicator size="large" />
+            <ThemedText style={styles.loadingText}>Loading orders...</ThemedText>
+          </View>
+        ) : ordersError ? (
+          <View style={styles.centerContent}>
+            <MaterialIcons name="error-outline" size={64} color="#f44336" />
+            <ThemedText type="title" style={styles.errorTitle}>Error</ThemedText>
+            <ThemedText style={styles.errorMessage}>{ordersError}</ThemedText>
+            <TouchableOpacity style={styles.retryButton} onPress={loadOrders}>
+              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
             </TouchableOpacity>
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={() => {
-            if (!loadingMore || !hasMore) return null;
-            return (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" />
-                <ThemedText style={styles.footerLoaderText}>Loading more orders...</ThemedText>
-              </View>
-            );
-          }}
-        />
+          </View>
+        ) : orders.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="receipt-long" size={64} color="#999" />
+            <ThemedText type="title" style={styles.emptyTitle}>No orders yet</ThemedText>
+            <ThemedText style={styles.emptyMessage}>
+              Start shopping to see your orders here
+            </ThemedText>
+            <TouchableOpacity
+              style={styles.shopButton}
+              onPress={() => router.push('/(tabs)/shop')}>
+              <ThemedText style={styles.shopButtonText}>Start Shopping</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={orders}
+            keyExtractor={(item) => item.id}
+            renderItem={renderOrderItem}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={ordersRefreshing} onRefresh={handleRefreshOrders} />
+            }
+          />
+        )
+      ) : (
+        autoshipsLoading ? (
+          <View style={styles.centerContent}>
+            <ActivityIndicator size="large" />
+            <ThemedText style={styles.loadingText}>Loading autoships...</ThemedText>
+          </View>
+        ) : autoshipsError ? (
+          <View style={styles.centerContent}>
+            <MaterialIcons name="error-outline" size={64} color="#f44336" />
+            <ThemedText type="title" style={styles.errorTitle}>Error</ThemedText>
+            <ThemedText style={styles.errorMessage}>{autoshipsError}</ThemedText>
+            <TouchableOpacity style={styles.retryButton} onPress={loadAutoships}>
+              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ) : autoships.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="refresh" size={64} color="#999" />
+            <ThemedText type="title" style={styles.emptyTitle}>No autoships yet</ThemedText>
+            <ThemedText style={styles.emptyMessage}>
+              Subscribe to your favorite products for automatic delivery and save!
+            </ThemedText>
+            <TouchableOpacity
+              style={styles.shopButton}
+              onPress={() => router.push('/(tabs)/shop')}>
+              <ThemedText style={styles.shopButtonText}>Browse Products</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={autoships}
+            keyExtractor={(item) => item.id}
+            renderItem={renderAutoshipItem}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={autoshipsRefreshing} onRefresh={handleRefreshAutoships} />
+            }
+          />
+        )
       )}
     </ThemedView>
   );
@@ -277,6 +388,30 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
+    fontWeight: '600',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#007AFF',
     fontWeight: '600',
   },
   centerContent: {
@@ -388,14 +523,72 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
   },
-  footerLoader: {
-    padding: 20,
-    alignItems: 'center',
-    gap: 8,
+  autoshipCard: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
   },
-  footerLoaderText: {
+  autoshipHeader: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 12,
+  },
+  productImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  autoshipInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  productName: {
+    fontSize: 16,
+  },
+  autoshipFrequency: {
     fontSize: 14,
+    opacity: 0.7,
+  },
+  autoshipDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  nextDeliveryLabel: {
+    fontSize: 12,
     opacity: 0.6,
+    marginBottom: 4,
+  },
+  nextDeliveryDate: {
+    fontSize: 14,
+  },
+  priceContainer: {
+    alignItems: 'flex-end',
+  },
+  pricePerDeliveryLabel: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginBottom: 4,
+  },
+  pricePerDelivery: {
+    fontSize: 18,
+  },
+  autoshipFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
   errorTitle: {
     marginTop: 20,

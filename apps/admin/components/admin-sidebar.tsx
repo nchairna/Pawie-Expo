@@ -14,6 +14,7 @@ import {
   LogOut,
   ShoppingCart,
   Warehouse,
+  RefreshCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -55,6 +56,11 @@ const navigation = [
     name: 'Inventory',
     href: '/inventory',
     icon: Warehouse,
+  },
+  {
+    name: 'Autoships',
+    href: '/autoships',
+    icon: RefreshCcw,
   },
 ];
 

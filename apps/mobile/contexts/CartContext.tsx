@@ -19,6 +19,7 @@ export interface CartItem {
     primary_image_path: string | null;
     base_price_idr: number;
     sku: string | null;
+    autoship_eligible?: boolean;
   };
 }
 
@@ -175,6 +176,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           primary_image_path: product.primary_image_path,
           base_price_idr: product.base_price_idr || 0,
           sku: product.sku,
+          autoship_eligible: product.autoship_eligible ?? false,
         },
       };
       dispatch({ type: 'ADD_ITEM', payload: cartItem });
@@ -257,6 +259,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               primary_image_path: product.primary_image_path,
               base_price_idr: product.base_price_idr || 0,
               sku: product.sku,
+              autoship_eligible: product.autoship_eligible ?? false,
             },
           };
         } catch {

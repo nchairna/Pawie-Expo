@@ -143,3 +143,53 @@ export interface OrderResult {
   order_id?: string;
   error?: string;
 }
+
+// Phase 5: Autoship Types
+export interface Pet {
+  id: string;
+  user_id: string;
+  name: string;
+  species: string | null;
+  breed: string | null;
+  age: number | null;
+  weight: number | null;
+  activity_level: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Autoship {
+  id: string;
+  product_id: string;
+  quantity: number;
+  frequency_weeks: number;
+  next_run_at: string;
+  status: 'active' | 'paused' | 'cancelled';
+  pet_id: string | null;
+  created_at: string;
+  // Joined data
+  product?: Product;
+  pet?: Pet;
+}
+
+export interface AutoshipRun {
+  id: string;
+  scheduled_at: string;
+  executed_at: string | null;
+  status: 'pending' | 'completed' | 'failed' | 'skipped';
+  order_id: string | null;
+}
+
+export interface AutoshipWithRuns extends Autoship {
+  runs: AutoshipRun[];
+}
+
+export interface AutoshipResult {
+  success: boolean;
+  autoship_id?: string;
+  error?: string;
+  next_run_at?: string;
+  new_next_run_at?: string;
+  skipped_date?: string;
+}

@@ -31,6 +31,7 @@ export default function RootLayout() {
             <Stack.Screen name="addresses/new" options={{ title: 'New Address' }} />
             <Stack.Screen name="addresses/[id]/edit" options={{ title: 'Edit Address' }} />
             <Stack.Screen name="orders/[id]" options={{ title: 'Order Details' }} />
+            <Stack.Screen name="autoships/[id]" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

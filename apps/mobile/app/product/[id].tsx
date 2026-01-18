@@ -8,6 +8,7 @@ import {
   FlatList,
   Dimensions,
   Alert,
+  Modal,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
@@ -28,6 +29,8 @@ import {
 import { computeProductPrice } from '@/lib/pricing';
 import { formatPriceIDR } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { createAutoship } from '@/lib/autoships';
 import type { ProductWithDetails, VariantValue, Product, PriceQuote } from '@/lib/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -57,6 +60,13 @@ export default function ProductDetailScreen() {
   const [oneTimePriceQuote, setOneTimePriceQuote] = useState<PriceQuote | null>(null);
   const [autoshipPriceQuote, setAutoshipPriceQuote] = useState<PriceQuote | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
+
+  // Autoship enrollment state
+  const { user } = useAuth();
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [enrollQuantity, setEnrollQuantity] = useState(1);
+  const [enrollFrequency, setEnrollFrequency] = useState(4);
+  const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -118,6 +128,35 @@ export default function ProductDetailScreen() {
       router.back();
     } else {
       router.push('/(tabs)/shop');
+    }
+  };
+
+  const handleEnrollAutoship = async () => {
+    if (!user) {
+      Alert.alert('Sign In Required', 'Please sign in to subscribe to autoship.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign In', onPress: () => router.push('/login') },
+      ]);
+      return;
+    }
+    if (!product) return;
+
+    setEnrolling(true);
+    const result = await createAutoship({
+      productId: product.id,
+      quantity: enrollQuantity,
+      frequencyWeeks: enrollFrequency,
+    });
+    setEnrolling(false);
+
+    if (result.success) {
+      setShowEnrollModal(false);
+      Alert.alert('Subscribed!', 'Your autoship subscription has been created.', [
+        { text: 'View Subscriptions', onPress: () => router.push('/(tabs)/orders') },
+        { text: 'Continue Shopping', style: 'cancel' },
+      ]);
+    } else {
+      Alert.alert('Error', result.error || 'Failed to create subscription');
     }
   };
 
@@ -892,8 +931,9 @@ export default function ProductDetailScreen() {
                   oneTimePriceQuote.final_price_idr - autoshipPriceQuote.final_price_idr
                 }
                 onEnrollPress={() => {
-                  // TODO: Navigate to autoship enrollment (Phase 5)
-                  console.log('Navigate to autoship enrollment');
+                  setEnrollQuantity(1);
+                  setEnrollFrequency(4);
+                  setShowEnrollModal(true);
                 }}
               />
             </View>
@@ -1055,6 +1095,80 @@ export default function ProductDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Autoship Enrollment Modal */}
+      <Modal visible={showEnrollModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="title" style={styles.modalTitle}>Subscribe & Save</ThemedText>
+              <TouchableOpacity onPress={() => setShowEnrollModal(false)}>
+                <MaterialIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ThemedText style={styles.modalProductName}>{product?.name}</ThemedText>
+
+            {/* Quantity */}
+            <View style={styles.modalRow}>
+              <ThemedText>Quantity</ThemedText>
+              <View style={styles.modalQuantitySelector}>
+                <TouchableOpacity
+                  style={styles.modalQtyButton}
+                  onPress={() => setEnrollQuantity(Math.max(1, enrollQuantity - 1))}>
+                  <MaterialIcons name="remove" size={20} color="#007AFF" />
+                </TouchableOpacity>
+                <ThemedText style={styles.modalQtyText}>{enrollQuantity}</ThemedText>
+                <TouchableOpacity
+                  style={styles.modalQtyButton}
+                  onPress={() => setEnrollQuantity(enrollQuantity + 1)}>
+                  <MaterialIcons name="add" size={20} color="#007AFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Frequency */}
+            <View style={styles.modalFrequencySection}>
+              <ThemedText style={{ marginBottom: 12 }}>Delivery Frequency</ThemedText>
+              <View style={styles.modalFrequencyOptions}>
+                {[2, 4, 6, 8, 12].map((weeks) => (
+                  <TouchableOpacity
+                    key={weeks}
+                    style={[styles.modalFreqOption, enrollFrequency === weeks && styles.modalFreqOptionSelected]}
+                    onPress={() => setEnrollFrequency(weeks)}>
+                    <ThemedText style={[styles.modalFreqText, enrollFrequency === weeks && styles.modalFreqTextSelected]}>
+                      {weeks === 2 ? '2 wks' : `${weeks} wks`}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Price Info */}
+            {autoshipPriceQuote && (
+              <View style={styles.modalPriceInfo}>
+                <ThemedText style={styles.modalPriceLabel}>
+                  {formatPriceIDR(autoshipPriceQuote.final_price_idr * enrollQuantity)} per delivery
+                </ThemedText>
+                {autoshipPriceQuote.discount_total_idr > 0 && (
+                  <ThemedText style={styles.modalSavingsText}>
+                    Save {Math.round((autoshipPriceQuote.discount_total_idr / autoshipPriceQuote.base_price_idr) * 100)}% with autoship!
+                  </ThemedText>
+                )}
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.modalEnrollButton, enrolling && { opacity: 0.6 }]}
+              onPress={handleEnrollAutoship}
+              disabled={enrolling}>
+              <ThemedText style={styles.modalEnrollButtonText}>
+                {enrolling ? 'Subscribing...' : 'Start Subscription'}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -1441,6 +1555,111 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   addToCartButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Enrollment Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+  },
+  modalProductName: {
+    fontSize: 16,
+    marginBottom: 20,
+    opacity: 0.7,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalQuantitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalQtyButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e3f2fd',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalQtyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  modalFrequencySection: {
+    paddingVertical: 16,
+  },
+  modalFrequencyOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  modalFreqOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  modalFreqOptionSelected: {
+    backgroundColor: '#007AFF',
+  },
+  modalFreqText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  modalFreqTextSelected: {
+    color: '#fff',
+  },
+  modalPriceInfo: {
+    backgroundColor: '#e8f5e9',
+    padding: 16,
+    borderRadius: 12,
+    marginVertical: 16,
+    alignItems: 'center',
+  },
+  modalPriceLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalSavingsText: {
+    marginTop: 4,
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  modalEnrollButton: {
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalEnrollButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
