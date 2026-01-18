@@ -6,6 +6,7 @@
 export interface Product {
   id: string; // uuid
   family_id: string | null; // Added in Phase 2B.11
+  detail_template_id: string | null; // Added in Phase 4+ - product detail template
   name: string;
   description: string | null;
   category: string | null;

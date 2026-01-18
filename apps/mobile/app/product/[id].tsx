@@ -9,6 +9,7 @@ import {
   Dimensions,
   Alert,
   Modal,
+  Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
@@ -31,6 +32,8 @@ import { formatPriceIDR } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { createAutoship } from '@/lib/autoships';
+import { getProductDetailSections } from '@/lib/product-details';
+import { ProductDetailAccordion } from '@/components/product/ProductDetailAccordion';
 import type { ProductWithDetails, VariantValue, Product, PriceQuote } from '@/lib/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -67,6 +70,17 @@ export default function ProductDetailScreen() {
   const [enrollQuantity, setEnrollQuantity] = useState(1);
   const [enrollFrequency, setEnrollFrequency] = useState(4);
   const [enrolling, setEnrolling] = useState(false);
+
+  // Product detail sections state
+  const [detailSections, setDetailSections] = useState<
+    Array<{
+      id: string;
+      title: string;
+      content: string;
+      sort_order: number;
+    }>
+  >([]);
+  const [loadingSections, setLoadingSections] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -111,6 +125,18 @@ export default function ProductDetailScreen() {
           } finally {
             setLoadingRelated(false);
           }
+        }
+
+        // Fetch product detail sections
+        setLoadingSections(true);
+        try {
+          const sections = await getProductDetailSections(id);
+          setDetailSections(sections);
+        } catch (err) {
+          console.error('Failed to load product detail sections:', err);
+          // Don't fail the whole page if sections fail
+        } finally {
+          setLoadingSections(false);
         }
       } catch (err) {
         const errorMessage =
@@ -1001,6 +1027,13 @@ export default function ProductDetailScreen() {
           </View>
         )}
 
+        {/* Product Detail Accordion */}
+        {detailSections.length > 0 && (
+          <View style={styles.section}>
+            <ProductDetailAccordion sections={detailSections} />
+          </View>
+        )}
+
         {/* Tags */}
         {product.tags && product.tags.length > 0 && (
           <View style={styles.section}>
@@ -1539,11 +1572,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0 -2px 4px rgba(0, 0, 0, 0.1)',
+      },
+    }),
   },
   addToCartButton: {
     backgroundColor: '#007AFF',

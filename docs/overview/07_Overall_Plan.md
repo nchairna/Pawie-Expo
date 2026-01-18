@@ -136,79 +136,85 @@ Deliver a production-ready Chewy.com-inspired MVP for Indonesia with:
 
 ---
 
-### Phase 4: Orders & Checkout 🔄 (In Progress)
+### Phase 4: Orders & Checkout ✅ (Complete)
 
 **Goal**: Customer can place one-time orders with inventory validation
 
 **Backend Tasks**:
-- [ ] `create_order_with_inventory()` function
-- [ ] Inventory validation functions
-- [ ] `check_product_availability()` function
-- [ ] `decrement_inventory()` function (transaction-safe)
-- [ ] Order creation Edge Function
-- [ ] Inventory movement audit logging
+- [x] `create_order_with_inventory()` function ✅
+- [x] Inventory validation functions ✅
+- [x] `check_product_availability()` function ✅
+- [x] `decrement_inventory()` function (transaction-safe) ✅
+- [x] Order creation Edge Function ✅
+- [x] Inventory movement audit logging ✅
 
 **Mobile App Tasks**:
-- [ ] Cart management
-- [ ] Checkout flow
-- [ ] Address selection/creation
-- [ ] Order confirmation screen
-- [ ] Order history screen
-- [ ] Order detail screen (with price breakdown)
+- [x] Cart management ✅
+- [x] Checkout flow ✅
+- [x] Address selection/creation ✅
+- [x] Order confirmation screen ✅
+- [x] Order history screen ✅
+- [x] Order detail screen (with price breakdown) ✅
 
 **Admin App Tasks**:
-- [ ] Order list and filtering
-- [ ] Order detail view
-- [ ] Order status updates
-- [ ] Inventory management UI
-- [ ] Inventory adjustment (with reason)
-- [ ] Inventory movement history
+- [x] Order list and filtering ✅
+- [x] Order detail view ✅
+- [x] Order status updates ✅
+- [x] Inventory management UI ✅
+- [x] Inventory adjustment (with reason) ✅
+- [x] Inventory movement history ✅
 
 **Duration**: 3 weeks
 
+**Status**: ✅ Complete
+
 **Definition of Done**:
-- User can place one-time orders
-- Inventory validated and decremented
-- Orders store immutable price snapshots
-- Admin can process orders
-- Inventory never goes negative
+- [x] User can place one-time orders ✅
+- [x] Inventory validated and decremented ✅
+- [x] Orders store immutable price snapshots ✅
+- [x] Admin can process orders ✅
+- [x] Inventory never goes negative ✅
 
 ---
 
-### Phase 5: Autoship System
+### Phase 5: Autoship System ✅ (Complete)
 
 **Goal**: Autoship enrollment and automatic order creation
 
 **Backend Tasks**:
-- [ ] `create_autoship()` function
-- [ ] Autoship execution Edge Function
-- [ ] Idempotency checks (autoship_runs)
-- [ ] Next run date calculation
-- [ ] Autoship execution scheduler setup
-- [ ] Email notifications (order confirmations)
+- [x] `create_autoship()` function ✅
+- [x] `create_autoship_with_order()` function (Chewy-style checkout) ✅
+- [x] Autoship execution functions (`execute_autoship`, `run_due_autoships`) ✅
+- [x] Idempotency checks (autoship_runs) ✅
+- [x] Next run date calculation ✅
+- [ ] Autoship execution scheduler setup (pending deployment)
+- [ ] Email notifications (order confirmations) - Phase 6+
 
 **Mobile App Tasks**:
-- [ ] Autoship enrollment (from product page)
-- [ ] Autoship management screen
-- [ ] Skip next delivery
-- [ ] Change frequency
-- [ ] Pause/cancel autoship
-- [ ] Autoship order history
+- [x] Autoship enrollment (from product page) ✅
+- [x] Chewy-style autoship enrollment during checkout ✅
+- [x] Autoship management screen ✅
+- [x] Skip next delivery ✅
+- [x] Change frequency ✅
+- [x] Pause/cancel autoship ✅
+- [x] Autoship order history ✅
 
 **Admin App Tasks**:
-- [ ] Autoship list and monitoring
-- [ ] Autoship execution history
-- [ ] Autoship demand forecasting
-- [ ] Manual autoship controls (pause/cancel)
+- [x] Autoship list and monitoring ✅
+- [x] Autoship execution history ✅
+- [ ] Autoship demand forecasting (optional)
+- [x] Manual autoship controls (pause/cancel) ✅
 
 **Duration**: 3 weeks
 
+**Status**: ✅ Complete
+
 **Definition of Done**:
-- User can enroll in autoship
-- Autoship creates orders automatically
-- Autoship execution is idempotent
-- User can manage autoship (skip, pause, cancel)
-- Admin can monitor autoship execution
+- [x] User can enroll in autoship (product page + checkout) ✅
+- [x] Autoship creates orders automatically ✅
+- [x] Autoship execution is idempotent ✅
+- [x] User can manage autoship (skip, pause, cancel) ✅
+- [x] Admin can monitor autoship execution ✅
 
 ---
 
@@ -330,8 +336,8 @@ Project MVP is complete when:
 | Phase 1: Database & RLS | 2 weeks | ✅ Complete |
 | Phase 2: Catalog & Browsing | 3 weeks | ✅ Complete |
 | Phase 3: Pricing & Discounts | 2 weeks | ✅ Complete |
-| Phase 4: Orders & Checkout | 3 weeks | 🔄 In Progress |
-| Phase 5: Autoship System | 3 weeks | ⏳ Pending |
+| Phase 4: Orders & Checkout | 3 weeks | ✅ Complete |
+| Phase 5: Autoship System | 3 weeks | ✅ Complete |
 | Phase 6: Pet Portal | 2 weeks | ⏳ Pending |
 | Phase 7: QA & Release | 2 weeks | ⏳ Pending |
 
@@ -341,6 +347,7 @@ Project MVP is complete when:
 
 ## Next Steps
 
-1. Complete Phase 4 (Orders & Checkout with Simulated Payment)
-2. Begin Phase 5 (Autoship System)
-3. Continue with remaining phases sequentially
+1. ✅ Phase 4 Complete (Orders & Checkout with Simulated Payment)
+2. ✅ Phase 5 Complete (Autoship System)
+3. Begin Phase 6 (Pet Portal & Personalization)
+4. Continue with remaining phases sequentially

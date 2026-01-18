@@ -15,18 +15,29 @@ import {
   ShoppingCart,
   Warehouse,
   RefreshCcw,
+  ChevronDown,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-const navigation = [
+const topLevelNavigation = [
   {
     name: 'Dashboard',
     href: '/',
     icon: LayoutDashboard,
   },
+];
+
+const masterDataNavigation = [
   {
     name: 'Products',
     href: '/products',
@@ -42,6 +53,14 @@ const navigation = [
     href: '/tags',
     icon: Tags,
   },
+  {
+    name: 'Product Detail Templates',
+    href: '/product-detail-templates',
+    icon: Package,
+  },
+];
+
+const otherNavigation = [
   {
     name: 'Discounts',
     href: '/discounts',
@@ -68,6 +87,13 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Check if any master data item is active to determine if section should be open
+  const isMasterDataActive = masterDataNavigation.some(
+    (item) =>
+      pathname === item.href ||
+      (item.href !== '/' && pathname?.startsWith(item.href))
+  );
 
   useEffect(() => {
     async function fetchUser() {
@@ -99,7 +125,89 @@ export function AdminSidebar() {
               <h1 className="text-2xl font-bold">Pawie Admin</h1>
             </div>
             <nav className="flex-1 px-2 space-y-1">
-              {navigation.map((item) => {
+              {/* Top Level Navigation */}
+              {topLevelNavigation.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== '/' && pathname?.startsWith(item.href));
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'mr-3 h-5 w-5 shrink-0',
+                        isActive
+                          ? 'text-primary-foreground'
+                          : 'text-muted-foreground group-hover:text-foreground'
+                      )}
+                    />
+                    {item.name}
+                  </Link>
+                );
+              })}
+
+              {/* Master Data Collapsible Section */}
+              <Accordion
+                type="single"
+                collapsible
+                defaultValue={isMasterDataActive ? 'master-data' : undefined}
+                className="w-full"
+              >
+                <AccordionItem value="master-data" className="border-none">
+                  <AccordionTrigger className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:no-underline">
+                    <div className="flex items-center">
+                      <Database className="mr-3 h-5 w-5 shrink-0" />
+                      Master Data
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0 pt-1">
+                    <div className="space-y-1 pl-4">
+                      {masterDataNavigation.map((item) => {
+                        const isActive =
+                          pathname === item.href ||
+                          (item.href !== '/' && pathname?.startsWith(item.href));
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            className={cn(
+                              'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                              isActive
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            )}
+                          >
+                            <Icon
+                              className={cn(
+                                'mr-3 h-5 w-5 shrink-0',
+                                isActive
+                                  ? 'text-primary-foreground'
+                                  : 'text-muted-foreground group-hover:text-foreground'
+                              )}
+                            />
+                            {item.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
+              {/* Other Navigation */}
+              {otherNavigation.map((item) => {
                 const isActive =
                   pathname === item.href ||
                   (item.href !== '/' && pathname?.startsWith(item.href));
@@ -168,7 +276,89 @@ export function AdminSidebar() {
                 <h1 className="text-xl font-bold">Pawie Admin</h1>
               </div>
               <nav className="flex-1 px-2 pt-4 space-y-1 overflow-y-auto">
-                {navigation.map((item) => {
+                {/* Top Level Navigation */}
+                {topLevelNavigation.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== '/' && pathname?.startsWith(item.href));
+                  const Icon = item.icon;
+
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={cn(
+                        'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          'mr-3 h-5 w-5 flex-shrink-0',
+                          isActive
+                            ? 'text-primary-foreground'
+                            : 'text-muted-foreground group-hover:text-foreground'
+                        )}
+                      />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+
+                {/* Master Data Collapsible Section */}
+                <Accordion
+                  type="single"
+                  collapsible
+                  defaultValue={isMasterDataActive ? 'master-data' : undefined}
+                  className="w-full"
+                >
+                  <AccordionItem value="master-data" className="border-none">
+                    <AccordionTrigger className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:no-underline">
+                      <div className="flex items-center">
+                        <Database className="mr-3 h-5 w-5 flex-shrink-0" />
+                        Master Data
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-0 pt-1">
+                      <div className="space-y-1 pl-4">
+                        {masterDataNavigation.map((item) => {
+                          const isActive =
+                            pathname === item.href ||
+                            (item.href !== '/' && pathname?.startsWith(item.href));
+                          const Icon = item.icon;
+
+                          return (
+                            <Link
+                              key={item.name}
+                              href={item.href}
+                              className={cn(
+                                'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                                isActive
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              )}
+                            >
+                              <Icon
+                                className={cn(
+                                  'mr-3 h-5 w-5 flex-shrink-0',
+                                  isActive
+                                    ? 'text-primary-foreground'
+                                    : 'text-muted-foreground group-hover:text-foreground'
+                                )}
+                              />
+                              {item.name}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                {/* Other Navigation */}
+                {otherNavigation.map((item) => {
                   const isActive =
                     pathname === item.href ||
                     (item.href !== '/' && pathname?.startsWith(item.href));
