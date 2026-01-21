@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Package,
@@ -17,6 +17,11 @@ import {
   RefreshCcw,
   ChevronDown,
   Database,
+  PackageSearch,
+  DollarSign,
+  Settings,
+  FileText,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -37,7 +42,8 @@ const topLevelNavigation = [
   },
 ];
 
-const masterDataNavigation = [
+// Catalog section (formerly Master Data)
+const catalogNavigation = [
   {
     name: 'Products',
     href: '/products',
@@ -54,32 +60,37 @@ const masterDataNavigation = [
     icon: Tags,
   },
   {
-    name: 'Product Detail Templates',
+    name: 'Templates',
     href: '/product-detail-templates',
-    icon: Package,
+    icon: FileText,
   },
 ];
 
-const otherNavigation = [
-  {
-    name: 'Discounts',
-    href: '/discounts',
-    icon: Percent,
-  },
+// Sales section
+const salesNavigation = [
   {
     name: 'Orders',
     href: '/orders',
     icon: ShoppingCart,
   },
   {
-    name: 'Inventory',
-    href: '/inventory',
-    icon: Warehouse,
-  },
-  {
     name: 'Autoships',
     href: '/autoships',
     icon: RefreshCcw,
+  },
+  {
+    name: 'Discounts',
+    href: '/discounts',
+    icon: Percent,
+  },
+];
+
+// Operations section
+const operationsNavigation = [
+  {
+    name: 'Inventory',
+    href: '/inventory',
+    icon: Warehouse,
   },
 ];
 
@@ -87,9 +98,23 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
-  // Check if any master data item is active to determine if section should be open
-  const isMasterDataActive = masterDataNavigation.some(
+  // Check if any section items are active to determine if section should be open by default
+  const isCatalogActive = catalogNavigation.some(
+    (item) =>
+      pathname === item.href ||
+      (item.href !== '/' && pathname?.startsWith(item.href))
+  );
+
+  const isSalesActive = salesNavigation.some(
+    (item) =>
+      pathname === item.href ||
+      (item.href !== '/' && pathname?.startsWith(item.href))
+  );
+
+  const isOperationsActive = operationsNavigation.some(
     (item) =>
       pathname === item.href ||
       (item.href !== '/' && pathname?.startsWith(item.href))
@@ -105,6 +130,16 @@ export function AdminSidebar() {
     fetchUser();
   }, []);
 
+  const handleNavigation = (href: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setPendingHref(href);
+    startTransition(() => {
+      router.push(href);
+      // Clear pending state after a short delay to account for fast navigation
+      setTimeout(() => setPendingHref(null), 300);
+    });
+  };
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -113,6 +148,53 @@ export function AdminSidebar() {
     } catch (error: any) {
       toast.error(`Failed to logout: ${error.message}`);
     }
+  };
+
+  // Reusable nav link component with loading state
+  const NavLink = ({
+    item,
+    isActive,
+  }: {
+    item: { name: string; href: string; icon: any };
+    isActive: boolean;
+  }) => {
+    const Icon = item.icon;
+    const isLoading = pendingHref === item.href;
+    const showAsActive = isActive || isLoading;
+
+    return (
+      <Link
+        href={item.href}
+        onClick={(e) => handleNavigation(item.href, e)}
+        className={cn(
+          'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+          showAsActive
+            ? 'bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+      >
+        {isLoading ? (
+          <Loader2
+            className={cn(
+              'mr-3 h-5 w-5 shrink-0 animate-spin',
+              showAsActive
+                ? 'text-primary-foreground'
+                : 'text-muted-foreground group-hover:text-foreground'
+            )}
+          />
+        ) : (
+          <Icon
+            className={cn(
+              'mr-3 h-5 w-5 shrink-0',
+              showAsActive
+                ? 'text-primary-foreground'
+                : 'text-muted-foreground group-hover:text-foreground'
+            )}
+          />
+        )}
+        {item.name}
+      </Link>
+    );
   };
 
   return (
@@ -125,117 +207,98 @@ export function AdminSidebar() {
               <h1 className="text-2xl font-bold">Pawie Admin</h1>
             </div>
             <nav className="flex-1 px-2 space-y-1">
-              {/* Top Level Navigation */}
+              {/* Dashboard */}
               {topLevelNavigation.map((item) => {
                 const isActive =
                   pathname === item.href ||
                   (item.href !== '/' && pathname?.startsWith(item.href));
-                const Icon = item.icon;
 
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'mr-3 h-5 w-5 shrink-0',
-                        isActive
-                          ? 'text-primary-foreground'
-                          : 'text-muted-foreground group-hover:text-foreground'
-                      )}
-                    />
-                    {item.name}
-                  </Link>
-                );
+                return <NavLink key={item.name} item={item} isActive={isActive} />;
               })}
 
-              {/* Master Data Collapsible Section */}
+              {/* Catalog Section */}
               <Accordion
                 type="single"
                 collapsible
-                defaultValue={isMasterDataActive ? 'master-data' : undefined}
+                defaultValue={isCatalogActive ? 'catalog' : undefined}
                 className="w-full"
               >
-                <AccordionItem value="master-data" className="border-none">
+                <AccordionItem value="catalog" className="border-none">
                   <AccordionTrigger className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:no-underline">
                     <div className="flex items-center">
-                      <Database className="mr-3 h-5 w-5 shrink-0" />
-                      Master Data
+                      <PackageSearch className="mr-3 h-5 w-5 shrink-0" />
+                      Catalog
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pb-0 pt-1">
                     <div className="space-y-1 pl-4">
-                      {masterDataNavigation.map((item) => {
+                      {catalogNavigation.map((item) => {
                         const isActive =
                           pathname === item.href ||
                           (item.href !== '/' && pathname?.startsWith(item.href));
-                        const Icon = item.icon;
 
-                        return (
-                          <Link
-                            key={item.name}
-                            href={item.href}
-                            className={cn(
-                              'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                              isActive
-                                ? 'bg-primary text-primary-foreground'
-                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                            )}
-                          >
-                            <Icon
-                              className={cn(
-                                'mr-3 h-5 w-5 shrink-0',
-                                isActive
-                                  ? 'text-primary-foreground'
-                                  : 'text-muted-foreground group-hover:text-foreground'
-                              )}
-                            />
-                            {item.name}
-                          </Link>
-                        );
+                        return <NavLink key={item.name} item={item} isActive={isActive} />;
                       })}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
 
-              {/* Other Navigation */}
-              {otherNavigation.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== '/' && pathname?.startsWith(item.href));
-                const Icon = item.icon;
+              {/* Sales Section */}
+              <Accordion
+                type="single"
+                collapsible
+                defaultValue={isSalesActive ? 'sales' : undefined}
+                className="w-full"
+              >
+                <AccordionItem value="sales" className="border-none">
+                  <AccordionTrigger className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:no-underline">
+                    <div className="flex items-center">
+                      <DollarSign className="mr-3 h-5 w-5 shrink-0" />
+                      Sales
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0 pt-1">
+                    <div className="space-y-1 pl-4">
+                      {salesNavigation.map((item) => {
+                        const isActive =
+                          pathname === item.href ||
+                          (item.href !== '/' && pathname?.startsWith(item.href));
 
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'mr-3 h-5 w-5 shrink-0',
-                        isActive
-                          ? 'text-primary-foreground'
-                          : 'text-muted-foreground group-hover:text-foreground'
-                      )}
-                    />
-                    {item.name}
-                  </Link>
-                );
-              })}
+                        return <NavLink key={item.name} item={item} isActive={isActive} />;
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
+              {/* Operations Section */}
+              <Accordion
+                type="single"
+                collapsible
+                defaultValue={isOperationsActive ? 'operations' : undefined}
+                className="w-full"
+              >
+                <AccordionItem value="operations" className="border-none">
+                  <AccordionTrigger className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:no-underline">
+                    <div className="flex items-center">
+                      <Settings className="mr-3 h-5 w-5 shrink-0" />
+                      Operations
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0 pt-1">
+                    <div className="space-y-1 pl-4">
+                      {operationsNavigation.map((item) => {
+                        const isActive =
+                          pathname === item.href ||
+                          (item.href !== '/' && pathname?.startsWith(item.href));
+
+                        return <NavLink key={item.name} item={item} isActive={isActive} />;
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </nav>
             <div className="px-4 pt-4 border-t">
               {userEmail && (
@@ -276,117 +339,98 @@ export function AdminSidebar() {
                 <h1 className="text-xl font-bold">Pawie Admin</h1>
               </div>
               <nav className="flex-1 px-2 pt-4 space-y-1 overflow-y-auto">
-                {/* Top Level Navigation */}
+                {/* Dashboard */}
                 {topLevelNavigation.map((item) => {
                   const isActive =
                     pathname === item.href ||
                     (item.href !== '/' && pathname?.startsWith(item.href));
-                  const Icon = item.icon;
 
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={cn(
-                        'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          'mr-3 h-5 w-5 flex-shrink-0',
-                          isActive
-                            ? 'text-primary-foreground'
-                            : 'text-muted-foreground group-hover:text-foreground'
-                        )}
-                      />
-                      {item.name}
-                    </Link>
-                  );
+                  return <NavLink key={item.name} item={item} isActive={isActive} />;
                 })}
 
-                {/* Master Data Collapsible Section */}
+                {/* Catalog Section */}
                 <Accordion
                   type="single"
                   collapsible
-                  defaultValue={isMasterDataActive ? 'master-data' : undefined}
+                  defaultValue={isCatalogActive ? 'catalog' : undefined}
                   className="w-full"
                 >
-                  <AccordionItem value="master-data" className="border-none">
+                  <AccordionItem value="catalog" className="border-none">
                     <AccordionTrigger className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:no-underline">
                       <div className="flex items-center">
-                        <Database className="mr-3 h-5 w-5 flex-shrink-0" />
-                        Master Data
+                        <PackageSearch className="mr-3 h-5 w-5 flex-shrink-0" />
+                        Catalog
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pb-0 pt-1">
                       <div className="space-y-1 pl-4">
-                        {masterDataNavigation.map((item) => {
+                        {catalogNavigation.map((item) => {
                           const isActive =
                             pathname === item.href ||
                             (item.href !== '/' && pathname?.startsWith(item.href));
-                          const Icon = item.icon;
 
-                          return (
-                            <Link
-                              key={item.name}
-                              href={item.href}
-                              className={cn(
-                                'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                                isActive
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                              )}
-                            >
-                              <Icon
-                                className={cn(
-                                  'mr-3 h-5 w-5 flex-shrink-0',
-                                  isActive
-                                    ? 'text-primary-foreground'
-                                    : 'text-muted-foreground group-hover:text-foreground'
-                                )}
-                              />
-                              {item.name}
-                            </Link>
-                          );
+                          return <NavLink key={item.name} item={item} isActive={isActive} />;
                         })}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
 
-                {/* Other Navigation */}
-                {otherNavigation.map((item) => {
-                  const isActive =
-                    pathname === item.href ||
-                    (item.href !== '/' && pathname?.startsWith(item.href));
-                  const Icon = item.icon;
+                {/* Sales Section */}
+                <Accordion
+                  type="single"
+                  collapsible
+                  defaultValue={isSalesActive ? 'sales' : undefined}
+                  className="w-full"
+                >
+                  <AccordionItem value="sales" className="border-none">
+                    <AccordionTrigger className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:no-underline">
+                      <div className="flex items-center">
+                        <DollarSign className="mr-3 h-5 w-5 flex-shrink-0" />
+                        Sales
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-0 pt-1">
+                      <div className="space-y-1 pl-4">
+                        {salesNavigation.map((item) => {
+                          const isActive =
+                            pathname === item.href ||
+                            (item.href !== '/' && pathname?.startsWith(item.href));
 
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={cn(
-                        'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          'mr-3 h-5 w-5 flex-shrink-0',
-                          isActive
-                            ? 'text-primary-foreground'
-                            : 'text-muted-foreground group-hover:text-foreground'
-                        )}
-                      />
-                      {item.name}
-                    </Link>
-                  );
-                })}
+                          return <NavLink key={item.name} item={item} isActive={isActive} />;
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                {/* Operations Section */}
+                <Accordion
+                  type="single"
+                  collapsible
+                  defaultValue={isOperationsActive ? 'operations' : undefined}
+                  className="w-full"
+                >
+                  <AccordionItem value="operations" className="border-none">
+                    <AccordionTrigger className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:no-underline">
+                      <div className="flex items-center">
+                        <Settings className="mr-3 h-5 w-5 flex-shrink-0" />
+                        Operations
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-0 pt-1">
+                      <div className="space-y-1 pl-4">
+                        {operationsNavigation.map((item) => {
+                          const isActive =
+                            pathname === item.href ||
+                            (item.href !== '/' && pathname?.startsWith(item.href));
+
+                          return <NavLink key={item.name} item={item} isActive={isActive} />;
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </nav>
               <div className="px-2 pt-4 border-t mt-auto">
                 {userEmail && (

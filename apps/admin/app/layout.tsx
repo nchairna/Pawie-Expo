@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
-import { LayoutWrapper } from "@/components/layout-wrapper";
+import { KeyboardShortcutsProvider } from "@/components/ui/keyboard-shortcuts";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -19,6 +21,19 @@ export const metadata: Metadata = {
   description: "Admin panel for Pawie pet commerce platform",
 };
 
+/**
+ * Root Layout
+ *
+ * Minimal root layout that only handles:
+ * - Font configuration
+ * - Global styles
+ * - Toast notifications
+ * - Keyboard shortcuts
+ *
+ * Layout structure is managed by route groups:
+ * - (auth)/layout.tsx - Centered layout for login/register
+ * - (dashboard)/layout.tsx - Sidebar + content for admin pages
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,9 +42,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased font-sans`}
       >
-        <LayoutWrapper>{children}</LayoutWrapper>
+        <KeyboardShortcutsProvider>
+          {children}
+        </KeyboardShortcutsProvider>
         <Toaster />
       </body>
     </html>

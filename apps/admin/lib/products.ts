@@ -18,7 +18,22 @@ export async function getProducts(): Promise<Product[]> {
     throw new Error(`Failed to fetch products: ${error.message}`);
   }
 
-  return data || [];
+  // Map data to Product type with default values for unselected fields
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    published: row.published,
+    updated_at: row.updated_at,
+    primary_image_path: row.primary_image_path,
+    family_id: row.family_id,
+    base_price_idr: row.base_price_idr,
+    sku: row.sku,
+    detail_template_id: null,
+    description: null,
+    autoship_eligible: false,
+    created_at: row.updated_at || '',
+  }));
 }
 
 /**

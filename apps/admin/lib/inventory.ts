@@ -74,8 +74,8 @@ export async function adjustInventory(
     throw new Error(`Failed to adjust inventory: ${error.message}`);
   }
 
-  if (!data || !data.success) {
-    throw new Error(data?.error || 'Failed to adjust inventory');
+  if (!data || data.success === false) {
+    throw new Error(data?.message || data?.error || 'Failed to adjust inventory');
   }
 
   // Fetch updated inventory

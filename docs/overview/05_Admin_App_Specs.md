@@ -1,342 +1,298 @@
-# Doc 05 — Admin App Specification
+# Doc 05 - Admin App Specification
 
-Product: Pawie  
-Version: v1.1 (Product Families + Variant Dimensions)  
-Last Updated: 2026-01-03  
+Product: Pawie Admin Dashboard
+Version: v3.0 (Consolidated)
+Last Updated: 2026-01-21
 Status: Source of Truth
 
 ---
 
-## 1. Purpose of Admin App
+## 1. Overview
 
-The Admin App is an internal operational tool used to:
+The Pawie Admin Dashboard is a Next.js 16 application for managing the pet product e-commerce platform. It provides operational management for products, orders, inventory, autoships, and discounts.
 
-- Manage products and pricing
-- Control discounts and autoship cheaper rules
-- Maintain inventory accuracy
-- Process and monitor orders
-- Monitor autoships and future demand
-- Ensure operational correctness and auditability
-
-The Admin App is NOT customer-facing.
+### Tech Stack
+- **Framework**: Next.js 16 (App Router)
+- **UI Components**: shadcn/ui
+- **Database**: Supabase (Postgres + RLS)
+- **Auth**: Supabase Auth with role-based access
+- **Styling**: Tailwind CSS
 
 ---
 
-## 2. Admin Users & Roles
+## 2. Architecture
 
-### 2.1 Roles
+### 2.1 Route Structure
 
-- admin (initially only one role)
+```
+app/
+├── (auth)/                    # Auth layout (no sidebar)
+│   ├── login/
+│   └── register/
+├── (dashboard)/               # Main app layout (with sidebar)
+│   ├── layout.tsx            # Sidebar + header + breadcrumbs
+│   ├── page.tsx              # Dashboard home
+│   ├── products/             # Product management
+│   │   ├── page.tsx          # Server Component with pagination
+│   │   ├── new/
+│   │   ├── [id]/             # Split into tabs (routes)
+│   │   │   ├── page.tsx      # Info tab
+│   │   │   ├── images/       # Images tab
+│   │   │   └── details/      # Details tab
+│   │   └── actions.ts        # Server Actions
+│   ├── families/             # Product families
+│   ├── tags/                 # Product tags
+│   ├── orders/               # Order management
+│   ├── autoships/            # Subscription management
+│   ├── discounts/            # Discount rules
+│   └── inventory/            # Stock management
+└── layout.tsx                # Root layout
+```
 
-Future roles may include:
-- ops
-- support
-- finance
+### 2.2 Data Fetching Patterns
 
-Role is stored on the profiles table.
+**Server Components (Default)**
+- All list pages are Server Components with server-side data fetching
+- Uses `searchParams` for pagination and filtering
+- Streaming with Suspense for better UX
 
----
+**Server Actions (Mutations)**
+- All mutations use Server Actions (`'use server'`)
+- Zod validation for all inputs
+- `revalidatePath()` for cache invalidation
+- Returns `{ success: true }` or `{ error: string }`
 
-## 3. Authentication & Access
+**Client Components (Interactive)**
+- Forms with react-hook-form
+- Dialogs and modals
+- Real-time filters
 
-- Admin users authenticate via Supabase Auth (email + password)
-- Admin access is enforced by Row Level Security
-- Non-admin users must never access admin routes or data
-- Admin app must not rely on client-side role checks alone
+### 2.3 Authentication
 
----
+```typescript
+// lib/auth-server.ts
+export async function requireAdmin() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-## 4. Core Admin Modules
+  if (!user) redirect('/login');
 
-The Admin App consists of the following core modules:
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, email, full_name, role')
+    .eq('id', user.id)
+    .single();
 
-- Dashboard
-- Products
-- Pricing & Discounts
-- Inventory
-- Orders
-- Autoships
-- Customers
-- Settings (minimal)
-
----
-
-## 5. Dashboard
-
-Purpose:
-- Provide high-level operational visibility
-
-Key metrics:
-- Total orders (lifetime / recent)
-- Orders by status
-- Active autoships
-- Upcoming autoship executions
-- Low inventory alerts
-
-Requirements:
-- Read-only metrics
-- No destructive actions on dashboard
-
----
-
-## 6. Product Families Module
-
-Purpose:
-- Manage product families (groups of related products with shared variant dimensions)
-
-Capabilities:
-- Create product family
-- Edit family name and description
-- Define variant dimensions for family (e.g., "Flavor", "Size")
-- Define variant values for each dimension (e.g., "Lamb", "Chicken" for Flavor)
-- View all products in a family
-- Delete family (with cascade handling)
-
-Family fields editable:
-- Name
-- Description
-
-Variant Dimension management:
-- Add dimension (name, sort_order)
-- Edit dimension name and sort order
-- Delete dimension (cascade to values and product assignments)
-
-Variant Value management:
-- Add value to dimension (value text, sort_order)
-- Edit value text and sort order
-- Delete value (cascade to product assignments)
-
-Restrictions:
-- Dimensions and values cannot be deleted if products are assigned
-- Family deletion requires confirmation and handles product reassignment
+  if (profile?.role !== 'admin') redirect('/forbidden');
+  return { user, profile };
+}
+```
 
 ---
 
-## 7. Products Module
+## 3. Completed Features
 
-Purpose:
-- Manage individual products (each represents a specific variant combination)
+### 3.1 Dashboard
+- Real-time stats (orders, revenue, inventory, autoships)
+- Quick action buttons
+- Recent orders widget
+- Low stock alerts widget
+- Suspense streaming for progressive loading
 
-Capabilities:
-- Create product
-- Assign product to family (optional)
-- Assign variant values to product (one per dimension in family)
-- Edit product
-- Publish / unpublish product
-- Assign tags (multi-category)
-- Toggle autoship eligibility
+### 3.2 Product Management
+- Server-side paginated list (50 per page)
+- Search by name/SKU (server-side)
+- Filter by family, published status, tags
+- Bulk actions (publish, unpublish, delete, assign tags)
+- Split edit page into tab routes (Info, Images, Details)
+- Image management with drag-drop upload and reordering
 
-Product fields editable:
-- Name
-- Description
-- Category (legacy, consider using tags instead)
-- Family assignment
-- Variant value assignments (for products in families)
-- Base Price (IDR) - stored directly on product
-- SKU - stored directly on product
-- Tag assignments (many-to-many)
-- Published status
-- Autoship eligible flag
+### 3.3 Order Management
+- Server-side paginated list (20 per page)
+- Filter by status, source, date range
+- Order detail with items, customer, address
+- Status update workflow
 
-Variant Value Assignment:
-- For products in a family, must assign exactly one value per dimension
-- UI shows dimension selectors with available values
-- Validation ensures all dimensions are assigned
+### 3.4 Inventory Management
+- Server-side paginated list using RPC function
+- Filter by low stock, out of stock
+- Quick add stock buttons
+- Adjust inventory dialog with preview
+- Movement history per product
 
-Tag Assignment:
-- Multi-select interface for tags
-- Can assign multiple tags per product
-- Tags can be created on-the-fly or selected from existing
+### 3.5 Autoship Management
+- Active/Paused/Cancelled tabs
+- Pause, resume, cancel actions
+- View associated orders
 
-Restrictions:
-- Deleting products should be soft-delete or disabled once ordered
-- Products in families must have variant values assigned for all dimensions
-- Cannot remove variant value assignment if it's the only one for that dimension
-- Products in families must have price and SKU set
-- Price and SKU are required for family-based products
+### 3.6 Discounts
+- Create/edit discount rules
+- Promo and autoship discount types
+- Target specific products or all products
+- Active/inactive toggle
 
----
-
-## 8. Product Tags Module
-
-Purpose:
-- Manage product tags for multi-category support
-
-Capabilities:
-- Create tag (name, slug)
-- Edit tag
-- Delete tag (with cascade handling)
-- View all products with a tag
-- Bulk assign tags to products
-
-Tag fields editable:
-- Name
-- Slug (auto-generated from name, editable)
-
-Restrictions:
-- Tag deletion removes assignments but doesn't delete products
-- Slug must be unique
+### 3.7 Navigation & UX
+- Sectioned sidebar (Dashboard, Catalog, Sales, Operations)
+- Breadcrumb navigation (auto-generated from URL)
+- Keyboard shortcuts (g+h, g+p, g+o, g+i, /, ?)
+- Top loading bar (nextjs-toploader)
+- Optimistic navigation with useTransition
+- Loading skeletons for all data-heavy pages
 
 ---
 
-## 9. Pricing & Discounts Module
+## 4. Performance Optimizations
 
-Purpose:
-- Manage all discount logic including autoship cheaper pricing
+### 4.1 Caching Strategy
 
-Capabilities:
-- Create discount rules
-- Activate / deactivate discounts
-- Define discount type (percent or fixed)
-- Define discount scope:
-  - Product
-  - Category
-- Define discount time window
-- Define stacking rules
-- Create autoship cheaper discount (kind = autoship)
+| Data Type | Revalidate | Pages |
+|-----------|------------|-------|
+| Real-time | 0 (no cache) | Dashboard, Inventory |
+| Dynamic | 60 seconds | Products, Orders, Autoships |
+| Static | 3600 seconds | Families, Tags (when converted to Server Components) |
 
-Admin visibility:
-- View discount usage
-- Preview effective prices per product
-- Preview autoship vs one-time pricing
+### 4.2 Database Optimizations
 
-Restrictions:
-- Discounts must never overwrite base prices
-- Editing discounts must not affect historical orders
+**Indexes Applied:**
+```sql
+-- Products
+idx_products_published, idx_products_family_id,
+idx_products_updated_at, idx_products_base_price
 
----
+-- Orders
+idx_orders_status, idx_orders_source,
+idx_orders_created_at, idx_orders_user_id
 
-## 10. Inventory Module
+-- Inventory
+idx_inventory_stock, idx_inventory_updated,
+idx_inventory_movements_product
+```
 
-Purpose:
-- Maintain accurate stock levels and audit history
+**RPC Functions:**
+- `get_dashboard_stats()` - All dashboard metrics in one query
+- `get_order_stats()` - Order statistics (replaces 6 queries with 1)
+- `get_all_products_with_inventory()` - Paginated inventory with product data
+- `get_products_inventory_count()` - Fast count for pagination
 
-Capabilities:
-- View inventory per product
-- Manually adjust inventory
-- View inventory movement history
-- See autoship-related demand indicators
+### 4.3 Query Optimizations
+- Select specific columns instead of `*`
+- Use `.single()` for single-row queries
+- No N+1 queries (verified)
+- All queries use indexes
 
-Inventory adjustments require:
-- Reason field
-- Immutable movement log entry
-
-Rules:
-- Inventory must never go negative
-- Inventory updates must be transaction-safe
-
----
-
-## 11. Orders Module
-
-Purpose:
-- Process and monitor customer orders
-
-Capabilities:
-- View all orders
-- Filter by status
-- View order details
-- Update order status
-- View price breakdown per order item
-- View autoship vs one-time source
-
-Order details must include:
-- Base price snapshot
-- Discount breakdown
-- Final price snapshot
-
-Restrictions:
-- Order prices are read-only
-- Orders must not be edited after creation
-- Status changes must be logged
+### 4.4 Image Optimization
+- Next.js Image component with automatic WebP/AVIF conversion
+- Supabase Storage CDN integration
+- Lazy loading for below-fold images
+- Proper `sizes` attributes for responsive images
 
 ---
 
-## 12. Autoships Module
+## 5. Key Files Reference
 
-Purpose:
-- Monitor recurring orders and future demand
+### Data Access Layer
+```
+lib/
+├── supabase-server.ts       # Server-side Supabase client
+├── auth-server.ts           # requireAdmin(), getCurrentProfile()
+├── products-server.ts       # getProducts(), getProduct()
+├── orders-server.ts         # getOrders(), getOrderById(), getOrderStats()
+├── inventory-server.ts      # getInventory(), getLowStockProducts()
+├── dashboard-server.ts      # getDashboardStats()
+└── types.ts                 # TypeScript interfaces
+```
 
-Capabilities:
-- View all autoships
-- Filter by status (active, paused, cancelled)
-- View next run date
-- View linked pet and product (product_id, not variant_id)
-- View autoship execution history
-
-Admin actions:
-- Pause autoship (optional)
-- Cancel autoship (optional)
-
-Restrictions:
-- Admin must not manually create autoship orders
-- Autoship execution handled server-side only
-
----
-
-## 13. Customers Module
-
-Purpose:
-- Customer support and visibility
-
-Capabilities:
-- View customer list
-- View customer profile
-- View customer pets
-- View customer orders
-- View customer autoships
-
-Restrictions:
-- Admin must not edit customer pets or personal data directly (MVP)
+### Reusable Components
+```
+components/
+├── ui/                      # shadcn components
+│   ├── table-skeleton.tsx
+│   ├── stats-skeleton.tsx
+│   ├── empty-state.tsx
+│   ├── pagination.tsx
+│   ├── breadcrumb-nav.tsx
+│   └── keyboard-shortcuts.tsx
+├── data-table/              # Generic data table
+│   ├── data-table.tsx
+│   ├── selectable-data-table.tsx
+│   └── bulk-actions-toolbar.tsx
+└── forms/                   # Form components
+    ├── image-upload.tsx
+    ├── tag-multi-select.tsx
+    └── product-selector.tsx
+```
 
 ---
 
-## 14. Settings Module (Minimal)
+## 6. Future Optimizations
 
-Purpose:
-- System-level configuration
+### 6.1 Performance
+- [ ] Convert Families, Tags, Discounts to Server Components
+- [ ] Add cache tags for granular revalidation (`revalidateTag()`)
+- [ ] Implement SWR for client-side caching where appropriate
+- [ ] Consider materialized views for complex analytics
 
-Capabilities (MVP):
-- View environment info
-- View admin users
-- View system health indicators
+### 6.2 Features
+- [ ] Audit logging system (create, update, delete tracking)
+- [ ] Customer management module (view-only customer data)
+- [ ] System settings page
+- [ ] Real-time subscriptions for inventory changes
+- [ ] Export functionality (CSV/Excel)
 
----
+### 6.3 UX Improvements
+- [ ] Rich text editor for product descriptions
+- [ ] Advanced product search (full-text search)
+- [ ] Drag-drop for product ordering
+- [ ] Batch product creation from CSV
 
-## 16. Non-Functional Requirements
-
-Security:
-- RLS enforced on all reads and writes
-- Admin role validated server-side
-- No service-role keys in client bundles
-
-Reliability:
-- All destructive actions confirmed
-- All state changes logged
-- Autoship and pricing logic not duplicated in admin
-
-Usability:
-- Fast page loads
-- Clear separation between read-only and write actions
-- Explicit warnings for irreversible actions
+### 6.4 Infrastructure
+- [ ] Error tracking integration (Sentry)
+- [ ] Performance monitoring (Vercel Analytics)
+- [ ] Automated testing (Playwright)
+- [ ] CI/CD pipeline improvements
 
 ---
 
-## 17. MVP Definition of Done
+## 7. Commands Reference
 
-Admin App MVP is complete when:
-- Admin can manage product families with variant dimensions
-- Admin can manage products and assign variant values
-- Admin can set price and SKU directly on products
-- Admin can manage product tags (multi-category)
-- Admin can manage discounts including autoship cheaper
-- Admin can manage inventory safely (per product)
-- Admin can view and process orders
-- Admin can monitor autoships
-- No admin action can corrupt pricing or inventory
+```bash
+# Development
+pnpm dev:admin              # Start dev server
+
+# Build & Deploy
+cd apps/admin && pnpm build # Production build
+cd apps/admin && pnpm lint  # Run linting
+
+# Database
+npx supabase db push        # Push migrations
+npx supabase migration new <name>  # Create migration
+```
 
 ---
 
-## Next Document
+## 8. Security
 
-Doc 06 — Environment Setup & Execution Plan
+- **RLS Enforced**: All database operations go through Row Level Security
+- **Admin Role Check**: `requireAdmin()` in all Server Components and Actions
+- **Anon Key Only**: Client uses `NEXT_PUBLIC_SUPABASE_ANON_KEY` (never service role)
+- **Input Validation**: Zod schemas for all Server Action inputs
+- **No Secrets in Code**: Environment variables for all configuration
+
+---
+
+## Appendix: Migration History
+
+| Migration | Purpose |
+|-----------|---------|
+| 0029 | Performance indexes for products, orders, inventory |
+| 0030 | Dashboard stats RPC function |
+| 0031 | Paginated inventory RPC function |
+| 0032 | Low stock threshold column |
+| 0033 | Dashboard stats RPC fix |
+| 0034 | Order stats RPC function |
+| 0035 | Fix inventory RPC add product_id |
+
+---
+
+**Document Status:** Current
+**Last Review:** 2026-01-21

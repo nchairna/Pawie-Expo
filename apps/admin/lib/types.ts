@@ -265,3 +265,45 @@ export interface AutoshipStats {
   dueToday: number;
   failedLastWeek: number;
 }
+
+// Server-Side Data Fetching Types
+
+/**
+ * Generic paginated response type for server-side data fetching
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  pages: number;
+  currentPage: number;
+  limit: number;
+}
+
+/**
+ * Dashboard statistics type
+ */
+export interface DashboardStats {
+  orders: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+    pending: number;
+    paid: number;
+    processing: number;
+    shipped: number;
+  };
+  revenue: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+  inventory: {
+    outOfStock: number;
+    lowStock: number;
+    totalProducts: number;
+  };
+  autoships: {
+    active: number;
+    dueToday: number;
+  };
+}

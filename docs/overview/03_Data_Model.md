@@ -2,7 +2,7 @@
 
 Product: Pawie
 Version: v2.0 (Chewy.com-Inspired Architecture)
-Last Updated: 2026-01-09
+Last Updated: 2026-01-17
 Status: Source of Truth
 
 ---
@@ -105,6 +105,7 @@ Columns:
 - published (boolean, default false)
 - autoship_eligible (boolean, default true)
 - primary_image_path (text, nullable) - path to primary product image
+- detail_template_id (uuid, references product_detail_templates.id, nullable) - template for product detail sections
 - searchable_text (tsvector, generated) - **GENERATED COLUMN** for full-text search
 - created_at (timestamp)
 - updated_at (timestamp)
@@ -278,6 +279,79 @@ Indexes:
 - Tags are global and can be assigned to any product
 - Price and SKU are stored directly on the products table (no separate variants table)
 - Base price is immutable (discounts never modify it)
+
+---
+
+### 4.10 Product Detail Templates & Sections
+
+Purpose:
+- Reusable templates for product detail sections (e.g., "Food Template", "Bed Template")
+- Product-specific overrides and custom sections
+- Enables consistent product detail pages with structured information
+
+#### 4.10.1 product_detail_templates
+
+Columns:
+- id (uuid, primary key)
+- name (text, not null) - Template name (e.g., "Food Template", "Bed Template")
+- description (text, nullable) - Optional description
+- created_at (timestamp)
+- updated_at (timestamp)
+
+RLS:
+- Public read allowed
+- Admin full CRUD
+
+Indexes:
+- name
+
+#### 4.10.2 product_detail_template_sections
+
+Columns:
+- id (uuid, primary key)
+- template_id (uuid, references product_detail_templates.id, on delete cascade)
+- title (text, not null) - Section title (e.g., "Details", "Ingredients", "Feeding Instructions")
+- content (text, nullable) - HTML content (can be empty for template structure)
+- sort_order (integer, not null, default 0) - Display order within template
+- created_at (timestamp)
+- updated_at (timestamp)
+
+RLS:
+- Public read allowed
+- Admin full CRUD
+
+Indexes:
+- template_id
+- (template_id, sort_order)
+
+#### 4.10.3 product_detail_sections
+
+Columns:
+- id (uuid, primary key)
+- product_id (uuid, references products.id, on delete cascade)
+- template_section_id (uuid, references product_detail_template_sections.id, on delete set null, nullable) - If set, this section overrides the corresponding template section
+- title (text, not null) - Section title
+- content (text, nullable) - HTML content
+- sort_order (integer, not null, default 0) - Display order (merged with template sections)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+RLS:
+- Public read allowed (only for published products)
+- Admin full CRUD
+
+Indexes:
+- product_id
+- template_section_id
+- (product_id, sort_order)
+
+Notes:
+- Products can reference a template via `products.detail_template_id`
+- Template sections provide default structure (e.g., "Details", "Ingredients", "Feeding Instructions")
+- Product-specific sections can override template sections (via `template_section_id`)
+- Product-specific sections can also be custom (no `template_section_id`)
+- Final display merges template sections with overrides, sorted by `sort_order`
+- Sections are displayed in an accordion UI on product detail pages
 
 ---
 

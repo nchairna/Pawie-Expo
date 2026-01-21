@@ -1,6 +1,24 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(pnpm type-check:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm tsc:*)",
+      "Bash(pnpm next build:*)",
+      "Bash(ls:*)",
+      "Bash(pnpm list:*)",
+      "Bash(pnpm dlx:*)",
+      "Bash(pnpm add:*)",
+      "Bash(done)",
+      "Bash(node -e:*)",
+      "Bash(npx supabase:*)",
+      "Bash(npm install:*)",
+      "Bash(grep:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

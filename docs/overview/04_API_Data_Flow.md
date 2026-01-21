@@ -2,7 +2,7 @@
 
 Product: Pawie
 Version: v2.0 (Chewy.com-Inspired Architecture)
-Last Updated: 2026-01-07
+Last Updated: 2026-01-17
 Status: Source of Truth
 
 ---
@@ -88,7 +88,7 @@ Use Supabase Postgres Functions (RPC) and Edge Functions for core flows:
 
 ---
 
-## 4. Create One-Time Order Flow
+## 4. Create Order Flow (One-Time & Autoship)
 
 **Function**: `create_order_with_inventory(user_id, items, address_id, source)`
 
@@ -97,6 +97,10 @@ Use Supabase Postgres Functions (RPC) and Edge Functions for core flows:
 - `items` (jsonb) - `[{ product_id, quantity }, ...]`
 - `address_id` (uuid, nullable) - Shipping address
 - `source` (text) - `'one_time'` or `'autoship'`
+
+**Note**: In the checkout flow, autoship is handled **per-product** in the cart. Each product can be individually selected for autoship enrollment, and the checkout process separates items into:
+- **One-time items**: Regular order items (source = 'one_time')
+- **Autoship items**: Items that create both an immediate order and an autoship subscription (source = 'autoship')
 
 **Server Steps** (Transaction-Safe):
 1. Validate user authentication
@@ -127,6 +131,50 @@ Use Supabase Postgres Functions (RPC) and Edge Functions for core flows:
 - `INSUFFICIENT_INVENTORY` - Product out of stock
 - `PRODUCT_NOT_FOUND` - Product doesn't exist or not published
 - `INVALID_USER` - User not authenticated
+
+---
+
+## 4.1 Cart Checkout Flow (Per-Product Autoship)
+
+**Implementation**: The checkout flow supports **per-product autoship selection** (Chewy-style), where each product in the cart can be individually enrolled in autoship.
+
+**Flow Steps**:
+
+1. **Cart Review**:
+   - User views cart items with pricing
+   - For each autoship-eligible product, user can toggle "Subscribe & Save"
+   - User selects delivery frequency per product (1-24 weeks)
+   - Pricing updates in real-time showing autoship savings
+
+2. **Item Separation**:
+   - Cart items are separated into two groups:
+     - **One-time items**: Products not selected for autoship
+     - **Autoship items**: Products selected for autoship enrollment
+
+3. **Order Creation**:
+   - **One-time items**: Create order via `create_order_with_inventory()` with `source = 'one_time'`
+   - **Autoship items**: For each autoship item:
+     - Create autoship subscription via `create_autoship_with_order()`
+     - This function creates both:
+       - An immediate order (source = 'autoship') with autoship discount applied
+       - An autoship subscription record for future deliveries
+
+4. **Pricing**:
+   - Each product's pricing is computed individually using `compute_product_price()`
+   - Autoship items use `is_autoship = true` to apply autoship discounts
+   - One-time items use `is_autoship = false`
+
+5. **Confirmation**:
+   - User sees confirmation for:
+     - One-time order (if any)
+     - Autoship subscriptions created (with next delivery dates)
+
+**Key Points**:
+- Autoship selection is **per-product**, not per-order
+- Mixed carts are supported (some items autoship, some one-time)
+- Each autoship item creates its own subscription with individual frequency
+- Autoship discounts apply automatically to autoship items
+- Cart is cleared after successful checkout
 
 ---
 
@@ -371,8 +419,10 @@ VALUES (discount_id, true);
 
 **Checkout**:
 - Price quote results per line item
+- Per-product autoship selection (Chewy-style)
+- Individual frequency selection per product
 - Total breakdown (subtotal, discounts, final)
-- Autoship option with savings
+- Mixed cart support (some items autoship, some one-time)
 
 **Orders**:
 - Locked order totals and item snapshots

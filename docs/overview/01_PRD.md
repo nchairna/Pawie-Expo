@@ -2,7 +2,7 @@
 
 Product: Pawie
 Version: v2.0 (Chewy.com-Inspired Architecture)
-Last Updated: 2026-01-07
+Last Updated: 2026-01-17
 Status: Source of Truth
 
 ---
@@ -105,7 +105,11 @@ Autoship and discounts appear contextually, not as standalone pages.
 Features:
 - Product browsing with family-based variant navigation
 - Fast search (Postgres-based for MVP)
-- Product detail pages with variant selector
+- Product detail pages with:
+  - Variant selector
+  - Product detail sections (accordion UI with structured information)
+  - Template-based detail sections (e.g., "Details", "Ingredients", "Feeding Instructions")
+  - Product-specific overrides and custom sections
 - Cross-product variant navigation (switch Flavor/Size instantly)
 - Base price display
 - Discounted price display (computed server-side)
@@ -162,8 +166,10 @@ Features:
 ### Autoship Features
 
 - One-click enrollment from product page
-- Frequency selection (weekly, bi-weekly, monthly)
+- **Per-product autoship selection in checkout** (Chewy-style) - Each product in cart can be individually enrolled
+- Frequency selection per product (1-24 weeks)
 - Quantity adjustment
+- Mixed cart support (some items autoship, some one-time)
 - Skip next delivery (push back by one cycle)
 - Pause autoship (keeps subscription, stops deliveries)
 - Cancel autoship (removes subscription)
